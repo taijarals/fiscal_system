@@ -9,6 +9,7 @@ SUPABASE_TABLE = "fs_questoes"
 TIPOS_QUESTAO = ["Múltipla escolha", "Aberta"]
 ALTERNATIVAS = ["A", "B", "C", "D", "E"]
 COLUNAS_LISTAGEM = [
+    "id_questao",
     "codigo",
     "disciplina",
     "assunto",
@@ -20,6 +21,7 @@ COLUNAS_LISTAGEM = [
 ]
 
 CAMPOS_QUESTAO = [
+    "id_questao",
     "codigo",
     "disciplina",
     "assunto",
@@ -40,6 +42,7 @@ CAMPOS_QUESTAO = [
 
 QUESTOES_INICIAIS = [
     {
+        "id_questao": None,
         "codigo": 1,
         "disciplina": "ICMS",
         "assunto": "Crédito Fiscal",
@@ -58,6 +61,7 @@ QUESTOES_INICIAIS = [
         "gabarito_aberta": "",
     },
     {
+        "id_questao": None,
         "codigo": 2,
         "disciplina": "IPI",
         "assunto": "Industrialização",
@@ -80,6 +84,7 @@ QUESTOES_INICIAIS = [
 
 def normalizar_questao(questao):
     return {
+        "id_questao": questao.get("id_questao"),
         "codigo": questao.get("codigo", questao.get("id", 0)),
         "disciplina": questao.get("disciplina", ""),
         "assunto": questao.get("assunto", ""),
@@ -101,7 +106,11 @@ def normalizar_questao(questao):
 
 def preparar_questao_supabase(questao):
     questao_normalizada = normalizar_questao(questao)
-    return {campo: questao_normalizada[campo] for campo in CAMPOS_QUESTAO}
+    return {
+        campo: questao_normalizada[campo]
+        for campo in CAMPOS_QUESTAO
+        if campo != "id_questao"
+    }
 
 
 def obter_config_supabase():
@@ -134,7 +143,7 @@ def listar_questoes_supabase():
         },
         params={
             "select": "*",
-            "order": "codigo.asc",
+            "order": "id_questao.asc",
         },
         timeout=15,
     )
@@ -160,7 +169,12 @@ def inserir_questao_supabase(questao):
         timeout=15,
     )
     resposta.raise_for_status()
-    return True
+    dados = resposta.json()
+
+    if dados:
+        return normalizar_questao(dados[0])
+
+    return normalizar_questao(questao)
 
 
 def carregar_questoes():
@@ -276,9 +290,15 @@ def proximo_codigo():
 
 
 def salvar_questao(questao):
-    salva_no_supabase = inserir_questao_supabase(questao)
+    questao_salva = inserir_questao_supabase(questao)
+
+    if questao_salva:
+        st.session_state.questoes.append(questao_salva)
+        st.session_state.origem_questoes = "supabase"
+        return
+
     st.session_state.questoes.append(questao)
-    st.session_state.origem_questoes = "supabase" if salva_no_supabase else "local"
+    st.session_state.origem_questoes = "local"
 
 
 def render_formulario_nova_questao():
@@ -342,6 +362,7 @@ def render_formulario_nova_questao():
                     return
 
                 questao = {
+                    "id_questao": None,
                     "codigo": proximo_codigo(),
                     "disciplina": disciplina.strip(),
                     "assunto": assunto.strip() or None,
