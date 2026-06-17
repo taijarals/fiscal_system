@@ -1,45 +1,406 @@
-import streamlit as st
+from copy import deepcopy
+
 import pandas as pd
+import requests
+import streamlit as st
+
+
+SUPABASE_TABLE = "fs_questoes"
+TIPOS_QUESTAO = ["Múltipla escolha", "Aberta"]
+ALTERNATIVAS = ["A", "B", "C", "D", "E"]
+COLUNAS_LISTAGEM = [
+    "codigo",
+    "disciplina",
+    "assunto",
+    "ano",
+    "banca",
+    "prova",
+    "tipo_questao",
+    "alternativa_certa",
+]
+
+CAMPOS_QUESTAO = [
+    "codigo",
+    "disciplina",
+    "assunto",
+    "ano",
+    "banca",
+    "prova",
+    "enunciado",
+    "alternativa_a",
+    "alternativa_b",
+    "alternativa_c",
+    "alternativa_d",
+    "alternativa_e",
+    "alternativa_certa",
+    "comentario_ia",
+    "tipo_questao",
+    "gabarito_aberta",
+]
+
+QUESTOES_INICIAIS = [
+    {
+        "codigo": 1,
+        "disciplina": "ICMS",
+        "assunto": "Crédito Fiscal",
+        "ano": 2024,
+        "banca": "Exemplo",
+        "prova": "SEFAZ BA",
+        "enunciado": "Qual a alíquota interna da Bahia?",
+        "alternativa_a": "7%",
+        "alternativa_b": "20,5%",
+        "alternativa_c": "12%",
+        "alternativa_d": "18%",
+        "alternativa_e": "25%",
+        "alternativa_certa": "B",
+        "comentario_ia": "Verifique a legislação estadual vigente para confirmar a alíquota aplicável.",
+        "tipo_questao": "Múltipla escolha",
+        "gabarito_aberta": "",
+    },
+    {
+        "codigo": 2,
+        "disciplina": "IPI",
+        "assunto": "Industrialização",
+        "ano": 2023,
+        "banca": "Exemplo",
+        "prova": "Receita Federal",
+        "enunciado": "Explique o que caracteriza industrialização para fins de IPI.",
+        "alternativa_a": "",
+        "alternativa_b": "",
+        "alternativa_c": "",
+        "alternativa_d": "",
+        "alternativa_e": "",
+        "alternativa_certa": "",
+        "comentario_ia": "A resposta deve abordar transformação, beneficiamento, montagem, acondicionamento ou renovação.",
+        "tipo_questao": "Aberta",
+        "gabarito_aberta": "Industrialização é qualquer operação que modifique natureza, funcionamento, acabamento, apresentação ou finalidade do produto.",
+    },
+]
+
+
+def normalizar_questao(questao):
+    return {
+        "codigo": questao.get("codigo", questao.get("id", 0)),
+        "disciplina": questao.get("disciplina", ""),
+        "assunto": questao.get("assunto", ""),
+        "ano": questao.get("ano"),
+        "banca": questao.get("banca", ""),
+        "prova": questao.get("prova", questao.get("titulo", "")),
+        "enunciado": questao.get("enunciado", ""),
+        "alternativa_a": questao.get("alternativa_a", ""),
+        "alternativa_b": questao.get("alternativa_b", ""),
+        "alternativa_c": questao.get("alternativa_c", ""),
+        "alternativa_d": questao.get("alternativa_d", ""),
+        "alternativa_e": questao.get("alternativa_e", ""),
+        "alternativa_certa": questao.get("alternativa_certa", questao.get("correta", "")),
+        "comentario_ia": questao.get("comentario_ia", ""),
+        "tipo_questao": questao.get("tipo_questao", "Múltipla escolha"),
+        "gabarito_aberta": questao.get("gabarito_aberta", ""),
+    }
+
+
+def preparar_questao_supabase(questao):
+    questao_normalizada = normalizar_questao(questao)
+    return {campo: questao_normalizada[campo] for campo in CAMPOS_QUESTAO}
+
+
+def obter_config_supabase():
+    try:
+        secao_supabase = st.secrets.get("supabase", {})
+        url = st.secrets.get("SUPABASE_URL") or secao_supabase.get("url")
+        key = st.secrets.get("SUPABASE_KEY") or secao_supabase.get("key")
+    except Exception:
+        return None, None
+
+    return url, key
+
+
+def supabase_configurado():
+    url, key = obter_config_supabase()
+    return bool(url and key), url, key
+
+
+def listar_questoes_supabase():
+    configurado, url, key = supabase_configurado()
+
+    if not configurado:
+        return None
+
+    resposta = requests.get(
+        f"{url}/rest/v1/{SUPABASE_TABLE}",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+        },
+        params={
+            "select": "*",
+            "order": "codigo.asc",
+        },
+        timeout=15,
+    )
+    resposta.raise_for_status()
+    return [normalizar_questao(questao) for questao in resposta.json()]
+
+
+def inserir_questao_supabase(questao):
+    configurado, url, key = supabase_configurado()
+
+    if not configurado:
+        return False
+
+    resposta = requests.post(
+        f"{url}/rest/v1/{SUPABASE_TABLE}",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+        },
+        json=preparar_questao_supabase(questao),
+        timeout=15,
+    )
+    resposta.raise_for_status()
+    return True
+
+
+def carregar_questoes():
+    try:
+        questoes_supabase = listar_questoes_supabase()
+    except Exception as erro:
+        st.error(f"Não foi possível carregar as questões do Supabase: {erro}")
+        return deepcopy(QUESTOES_INICIAIS), "erro"
+
+    if questoes_supabase is None:
+        st.warning(
+            "Supabase não configurado. Cadastre SUPABASE_URL e SUPABASE_KEY em .streamlit/secrets.toml."
+        )
+        return deepcopy(QUESTOES_INICIAIS), "local"
+
+    return questoes_supabase, "supabase"
+
+
+def inicializar_questoes(forcar_recarregamento=False):
+    if forcar_recarregamento or "questoes" not in st.session_state:
+        questoes, origem = carregar_questoes()
+        st.session_state.questoes = questoes
+        st.session_state.origem_questoes = origem
+    else:
+        st.session_state.questoes = [
+            normalizar_questao(questao) for questao in st.session_state.questoes
+        ]
+
+
+def opcoes_filtro(df, coluna, opcao_padrao):
+    if df.empty or coluna not in df.columns:
+        return [opcao_padrao]
+
+    opcoes = sorted(df[coluna].dropna().astype(str).unique())
+    return [opcao_padrao] + opcoes
+
+
+def aplicar_filtros(df, disciplina, assunto, ano, banca, prova, tipo_questao, pesquisa):
+    df_filtrado = df.copy()
+
+    if disciplina != "Todas":
+        df_filtrado = df_filtrado[df_filtrado["disciplina"].astype(str) == disciplina]
+
+    if assunto != "Todos":
+        df_filtrado = df_filtrado[df_filtrado["assunto"].astype(str) == assunto]
+
+    if ano != "Todos":
+        df_filtrado = df_filtrado[df_filtrado["ano"].astype(str) == ano]
+
+    if banca != "Todas":
+        df_filtrado = df_filtrado[df_filtrado["banca"].astype(str) == banca]
+
+    if prova != "Todas":
+        df_filtrado = df_filtrado[df_filtrado["prova"].astype(str) == prova]
+
+    if tipo_questao != "Todos":
+        df_filtrado = df_filtrado[df_filtrado["tipo_questao"].astype(str) == tipo_questao]
+
+    if pesquisa:
+        texto = pesquisa.strip().lower()
+        colunas_pesquisa = [
+            "disciplina",
+            "assunto",
+            "banca",
+            "prova",
+            "enunciado",
+            "comentario_ia",
+            "gabarito_aberta",
+        ]
+        mascara = df_filtrado[colunas_pesquisa].apply(
+            lambda coluna: coluna.astype(str).str.lower().str.contains(texto, na=False)
+        ).any(axis=1)
+        df_filtrado = df_filtrado[mascara]
+
+    return df_filtrado
+
+
+def validar_questao(tipo_questao, campos):
+    campos_obrigatorios = [
+        "disciplina",
+        "enunciado",
+        "tipo_questao",
+    ]
+
+    for campo in campos_obrigatorios:
+        if not str(campos[campo]).strip():
+            return False, "Preencha os campos obrigatórios da questão."
+
+    if tipo_questao == "Múltipla escolha":
+        alternativas_obrigatorias = [
+            "alternativa_a",
+            "alternativa_b",
+            "alternativa_c",
+            "alternativa_d",
+            "alternativa_e",
+        ]
+        for campo in alternativas_obrigatorias:
+            if not campos[campo].strip():
+                return False, "Preencha todas as alternativas da questão de múltipla escolha."
+
+        if not campos["alternativa_certa"].strip():
+            return False, "Selecione a alternativa certa da questão."
+
+    if tipo_questao == "Aberta" and not campos["gabarito_aberta"].strip():
+        return False, "Preencha o gabarito da questão aberta."
+
+    return True, ""
+
+
+def proximo_codigo():
+    codigos = [int(q["codigo"]) for q in st.session_state.questoes if q.get("codigo")]
+    return max(codigos, default=0) + 1
+
+
+def salvar_questao(questao):
+    salva_no_supabase = inserir_questao_supabase(questao)
+    st.session_state.questoes.append(questao)
+    st.session_state.origem_questoes = "supabase" if salva_no_supabase else "local"
+
+
+def render_formulario_nova_questao():
+    @st.dialog("Nova Questão")
+    def formulario():
+        with st.form("nova_questao"):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                disciplina = st.text_input("Disciplina")
+                assunto = st.text_input("Assunto")
+                banca = st.text_input("Banca")
+
+            with col2:
+                ano = st.number_input("Ano", min_value=1900, max_value=2100, step=1, value=2026)
+                prova = st.text_input("Prova")
+                tipo_questao = st.selectbox("Tipo de Questão", TIPOS_QUESTAO)
+
+            enunciado = st.text_area("Enunciado")
+
+            alternativa_a = ""
+            alternativa_b = ""
+            alternativa_c = ""
+            alternativa_d = ""
+            alternativa_e = ""
+            alternativa_certa = ""
+            gabarito_aberta = ""
+
+            if tipo_questao == "Múltipla escolha":
+                st.markdown("#### Alternativas")
+                alternativa_a = st.text_area("Alternativa A")
+                alternativa_b = st.text_area("Alternativa B")
+                alternativa_c = st.text_area("Alternativa C")
+                alternativa_d = st.text_area("Alternativa D")
+                alternativa_e = st.text_area("Alternativa E")
+                alternativa_certa = st.selectbox("Alternativa Certa", ALTERNATIVAS)
+            else:
+                gabarito_aberta = st.text_area("Gabarito da Questão Aberta")
+
+            comentario_ia = st.text_area("Comentário IA")
+
+            salvar = st.form_submit_button("Salvar", use_container_width=True)
+
+            if salvar:
+                campos = {
+                    "disciplina": disciplina,
+                    "enunciado": enunciado,
+                    "tipo_questao": tipo_questao,
+                    "alternativa_a": alternativa_a,
+                    "alternativa_b": alternativa_b,
+                    "alternativa_c": alternativa_c,
+                    "alternativa_d": alternativa_d,
+                    "alternativa_e": alternativa_e,
+                    "alternativa_certa": alternativa_certa,
+                    "gabarito_aberta": gabarito_aberta,
+                }
+                valido, mensagem = validar_questao(tipo_questao, campos)
+
+                if not valido:
+                    st.error(mensagem)
+                    return
+
+                questao = {
+                    "codigo": proximo_codigo(),
+                    "disciplina": disciplina.strip(),
+                    "assunto": assunto.strip() or None,
+                    "ano": int(ano) if ano else None,
+                    "banca": banca.strip() or None,
+                    "prova": prova.strip() or None,
+                    "enunciado": enunciado.strip(),
+                    "alternativa_a": alternativa_a.strip() or None,
+                    "alternativa_b": alternativa_b.strip() or None,
+                    "alternativa_c": alternativa_c.strip() or None,
+                    "alternativa_d": alternativa_d.strip() or None,
+                    "alternativa_e": alternativa_e.strip() or None,
+                    "alternativa_certa": alternativa_certa or None,
+                    "comentario_ia": comentario_ia.strip() or None,
+                    "tipo_questao": tipo_questao,
+                    "gabarito_aberta": gabarito_aberta.strip() or None,
+                }
+
+                try:
+                    salvar_questao(questao)
+                except Exception as erro:
+                    st.error(f"Não foi possível salvar a questão no Supabase: {erro}")
+                    return
+
+                st.rerun()
+
+    formulario()
 
 
 def render():
-
-    if "questoes" not in st.session_state:
-        st.session_state.questoes = [
-            {
-                "id": 1,
-                "disciplina": "ICMS",
-                "assunto": "Crédito Fiscal",
-                "titulo": "Questão ICMS 001",
-                "enunciado": "Qual a alíquota interna da Bahia?",
-                "correta": "B"
-            },
-            {
-                "id": 2,
-                "disciplina": "IPI",
-                "assunto": "Industrialização",
-                "titulo": "Questão IPI 001",
-                "enunciado": "O que caracteriza industrialização?",
-                "correta": "A"
-            }
-        ]
+    inicializar_questoes()
 
     # ==================================================
     # TOOLBAR
     # ==================================================
 
-    col1, col2 = st.columns([8, 2])
+    col1, col2, col3 = st.columns([7, 2, 2])
 
     with col1:
         st.subheader("Questões")
 
     with col2:
-        nova_questao = st.button(
-            "Nova Questão",
-            use_container_width=True
-        )
+        nova_questao = st.button("Nova Questão", use_container_width=True)
+
+    with col3:
+        recarregar = st.button("Recarregar", use_container_width=True)
+
+    if recarregar:
+        inicializar_questoes(forcar_recarregamento=True)
+        st.rerun()
+
+    if st.session_state.get("origem_questoes") == "supabase":
+        st.caption("Dados carregados do Supabase.")
+    else:
+        st.caption("Dados locais de exemplo em uso.")
 
     st.divider()
+
+    df = pd.DataFrame(st.session_state.questoes, columns=CAMPOS_QUESTAO)
 
     # ==================================================
     # FILTROS
@@ -48,21 +409,18 @@ def render():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        disciplina = st.selectbox(
-            "Disciplina",
-            ["Todas"]
-        )
+        disciplina = st.selectbox("Disciplina", opcoes_filtro(df, "disciplina", "Todas"))
+        banca = st.selectbox("Banca", opcoes_filtro(df, "banca", "Todas"))
 
     with col2:
-        assunto = st.selectbox(
-            "Assunto",
-            ["Todos"]
-        )
+        assunto = st.selectbox("Assunto", opcoes_filtro(df, "assunto", "Todos"))
+        prova = st.selectbox("Prova", opcoes_filtro(df, "prova", "Todas"))
 
     with col3:
-        pesquisa = st.text_input(
-            "Pesquisar"
-        )
+        ano = st.selectbox("Ano", opcoes_filtro(df, "ano", "Todos"))
+        tipo_questao = st.selectbox("Tipo", ["Todos"] + TIPOS_QUESTAO)
+
+    pesquisa = st.text_input("Pesquisar")
 
     st.divider()
 
@@ -70,71 +428,19 @@ def render():
     # TABELA
     # ==================================================
 
-    df = pd.DataFrame(st.session_state.questoes)
-
-    colunas = [
-        "id",
-        "disciplina",
-        "assunto",
-        "titulo",
-        "correta"
-    ]
+    df_filtrado = aplicar_filtros(df, disciplina, assunto, ano, banca, prova, tipo_questao, pesquisa)
 
     st.dataframe(
-        df[colunas],
+        df_filtrado[COLUNAS_LISTAGEM],
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
     )
+
+    st.caption(f"{len(df_filtrado)} questão(ões) encontrada(s).")
 
     # ==================================================
     # FORMULÁRIO
     # ==================================================
 
     if nova_questao:
-
-        @st.dialog("Nova Questão")
-        def formulario():
-
-            with st.form("nova_questao"):
-
-                disciplina = st.text_input("Disciplina")
-
-                assunto = st.text_input("Assunto")
-
-                titulo = st.text_input("Título")
-
-                enunciado = st.text_area("Enunciado")
-
-                correta = st.selectbox(
-                    "Resposta Correta",
-                    ["A", "B", "C", "D"]
-                )
-
-                salvar = st.form_submit_button(
-                    "Salvar",
-                    use_container_width=True
-                )
-
-                if salvar:
-
-                    novo_id = (
-                        max(
-                            [q["id"] for q in st.session_state.questoes],
-                            default=0
-                        ) + 1
-                    )
-
-                    st.session_state.questoes.append(
-                        {
-                            "id": novo_id,
-                            "disciplina": disciplina,
-                            "assunto": assunto,
-                            "titulo": titulo,
-                            "enunciado": enunciado,
-                            "correta": correta
-                        }
-                    )
-
-                    st.rerun()
-
-        formulario()
+        render_formulario_nova_questao()
