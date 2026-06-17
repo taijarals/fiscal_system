@@ -1,9 +1,11 @@
 from copy import deepcopy
 
-import streamlit as st
 import pandas as pd
+import requests
+import streamlit as st
 
 
+SUPABASE_TABLE = "fs_questoes"
 TIPOS_QUESTAO = ["Múltipla escolha", "Aberta"]
 ALTERNATIVAS = ["A", "B", "C", "D", "E"]
 COLUNAS_LISTAGEM = [
@@ -16,7 +18,6 @@ COLUNAS_LISTAGEM = [
     "tipo_questao",
     "alternativa_certa",
 ]
-
 
 CAMPOS_QUESTAO = [
     "codigo",
@@ -36,7 +37,6 @@ CAMPOS_QUESTAO = [
     "tipo_questao",
     "gabarito_aberta",
 ]
-
 
 QUESTOES_INICIAIS = [
     {
@@ -83,7 +83,7 @@ def normalizar_questao(questao):
         "codigo": questao.get("codigo", questao.get("id", 0)),
         "disciplina": questao.get("disciplina", ""),
         "assunto": questao.get("assunto", ""),
-        "ano": questao.get("ano", ""),
+        "ano": questao.get("ano"),
         "banca": questao.get("banca", ""),
         "prova": questao.get("prova", questao.get("titulo", "")),
         "enunciado": questao.get("enunciado", ""),
@@ -99,9 +99,91 @@ def normalizar_questao(questao):
     }
 
 
-def inicializar_questoes():
-    if "questoes" not in st.session_state:
-        st.session_state.questoes = deepcopy(QUESTOES_INICIAIS)
+def preparar_questao_supabase(questao):
+    questao_normalizada = normalizar_questao(questao)
+    return {campo: questao_normalizada[campo] for campo in CAMPOS_QUESTAO}
+
+
+def obter_config_supabase():
+    try:
+        secao_supabase = st.secrets.get("supabase", {})
+        url = st.secrets.get("SUPABASE_URL") or secao_supabase.get("url")
+        key = st.secrets.get("SUPABASE_KEY") or secao_supabase.get("key")
+    except Exception:
+        return None, None
+
+    return url, key
+
+
+def supabase_configurado():
+    url, key = obter_config_supabase()
+    return bool(url and key), url, key
+
+
+def listar_questoes_supabase():
+    configurado, url, key = supabase_configurado()
+
+    if not configurado:
+        return None
+
+    resposta = requests.get(
+        f"{url}/rest/v1/{SUPABASE_TABLE}",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+        },
+        params={
+            "select": "*",
+            "order": "codigo.asc",
+        },
+        timeout=15,
+    )
+    resposta.raise_for_status()
+    return [normalizar_questao(questao) for questao in resposta.json()]
+
+
+def inserir_questao_supabase(questao):
+    configurado, url, key = supabase_configurado()
+
+    if not configurado:
+        return False
+
+    resposta = requests.post(
+        f"{url}/rest/v1/{SUPABASE_TABLE}",
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+        },
+        json=preparar_questao_supabase(questao),
+        timeout=15,
+    )
+    resposta.raise_for_status()
+    return True
+
+
+def carregar_questoes():
+    try:
+        questoes_supabase = listar_questoes_supabase()
+    except Exception as erro:
+        st.error(f"Não foi possível carregar as questões do Supabase: {erro}")
+        return deepcopy(QUESTOES_INICIAIS), "erro"
+
+    if questoes_supabase is None:
+        st.warning(
+            "Supabase não configurado. Cadastre SUPABASE_URL e SUPABASE_KEY em .streamlit/secrets.toml."
+        )
+        return deepcopy(QUESTOES_INICIAIS), "local"
+
+    return questoes_supabase, "supabase"
+
+
+def inicializar_questoes(forcar_recarregamento=False):
+    if forcar_recarregamento or "questoes" not in st.session_state:
+        questoes, origem = carregar_questoes()
+        st.session_state.questoes = questoes
+        st.session_state.origem_questoes = origem
     else:
         st.session_state.questoes = [
             normalizar_questao(questao) for questao in st.session_state.questoes
@@ -159,16 +241,13 @@ def aplicar_filtros(df, disciplina, assunto, ano, banca, prova, tipo_questao, pe
 def validar_questao(tipo_questao, campos):
     campos_obrigatorios = [
         "disciplina",
-        "assunto",
-        "ano",
-        "banca",
-        "prova",
         "enunciado",
+        "tipo_questao",
     ]
 
     for campo in campos_obrigatorios:
         if not str(campos[campo]).strip():
-            return False, "Preencha todos os campos obrigatórios da questão."
+            return False, "Preencha os campos obrigatórios da questão."
 
     if tipo_questao == "Múltipla escolha":
         alternativas_obrigatorias = [
@@ -182,10 +261,24 @@ def validar_questao(tipo_questao, campos):
             if not campos[campo].strip():
                 return False, "Preencha todas as alternativas da questão de múltipla escolha."
 
+        if not campos["alternativa_certa"].strip():
+            return False, "Selecione a alternativa certa da questão."
+
     if tipo_questao == "Aberta" and not campos["gabarito_aberta"].strip():
         return False, "Preencha o gabarito da questão aberta."
 
     return True, ""
+
+
+def proximo_codigo():
+    codigos = [int(q["codigo"]) for q in st.session_state.questoes if q.get("codigo")]
+    return max(codigos, default=0) + 1
+
+
+def salvar_questao(questao):
+    salva_no_supabase = inserir_questao_supabase(questao)
+    st.session_state.questoes.append(questao)
+    st.session_state.origem_questoes = "supabase" if salva_no_supabase else "local"
 
 
 def render_formulario_nova_questao():
@@ -232,16 +325,14 @@ def render_formulario_nova_questao():
             if salvar:
                 campos = {
                     "disciplina": disciplina,
-                    "assunto": assunto,
-                    "ano": ano,
-                    "banca": banca,
-                    "prova": prova,
                     "enunciado": enunciado,
+                    "tipo_questao": tipo_questao,
                     "alternativa_a": alternativa_a,
                     "alternativa_b": alternativa_b,
                     "alternativa_c": alternativa_c,
                     "alternativa_d": alternativa_d,
                     "alternativa_e": alternativa_e,
+                    "alternativa_certa": alternativa_certa,
                     "gabarito_aberta": gabarito_aberta,
                 }
                 valido, mensagem = validar_questao(tipo_questao, campos)
@@ -250,31 +341,30 @@ def render_formulario_nova_questao():
                     st.error(mensagem)
                     return
 
-                novo_codigo = max(
-                    [q["codigo"] for q in st.session_state.questoes],
-                    default=0,
-                ) + 1
+                questao = {
+                    "codigo": proximo_codigo(),
+                    "disciplina": disciplina.strip(),
+                    "assunto": assunto.strip() or None,
+                    "ano": int(ano) if ano else None,
+                    "banca": banca.strip() or None,
+                    "prova": prova.strip() or None,
+                    "enunciado": enunciado.strip(),
+                    "alternativa_a": alternativa_a.strip() or None,
+                    "alternativa_b": alternativa_b.strip() or None,
+                    "alternativa_c": alternativa_c.strip() or None,
+                    "alternativa_d": alternativa_d.strip() or None,
+                    "alternativa_e": alternativa_e.strip() or None,
+                    "alternativa_certa": alternativa_certa or None,
+                    "comentario_ia": comentario_ia.strip() or None,
+                    "tipo_questao": tipo_questao,
+                    "gabarito_aberta": gabarito_aberta.strip() or None,
+                }
 
-                st.session_state.questoes.append(
-                    {
-                        "codigo": novo_codigo,
-                        "disciplina": disciplina.strip(),
-                        "assunto": assunto.strip(),
-                        "ano": int(ano),
-                        "banca": banca.strip(),
-                        "prova": prova.strip(),
-                        "enunciado": enunciado.strip(),
-                        "alternativa_a": alternativa_a.strip(),
-                        "alternativa_b": alternativa_b.strip(),
-                        "alternativa_c": alternativa_c.strip(),
-                        "alternativa_d": alternativa_d.strip(),
-                        "alternativa_e": alternativa_e.strip(),
-                        "alternativa_certa": alternativa_certa,
-                        "comentario_ia": comentario_ia.strip(),
-                        "tipo_questao": tipo_questao,
-                        "gabarito_aberta": gabarito_aberta.strip(),
-                    }
-                )
+                try:
+                    salvar_questao(questao)
+                except Exception as erro:
+                    st.error(f"Não foi possível salvar a questão no Supabase: {erro}")
+                    return
 
                 st.rerun()
 
@@ -288,13 +378,25 @@ def render():
     # TOOLBAR
     # ==================================================
 
-    col1, col2 = st.columns([8, 2])
+    col1, col2, col3 = st.columns([7, 2, 2])
 
     with col1:
         st.subheader("Questões")
 
     with col2:
         nova_questao = st.button("Nova Questão", use_container_width=True)
+
+    with col3:
+        recarregar = st.button("Recarregar", use_container_width=True)
+
+    if recarregar:
+        inicializar_questoes(forcar_recarregamento=True)
+        st.rerun()
+
+    if st.session_state.get("origem_questoes") == "supabase":
+        st.caption("Dados carregados do Supabase.")
+    else:
+        st.caption("Dados locais de exemplo em uso.")
 
     st.divider()
 
