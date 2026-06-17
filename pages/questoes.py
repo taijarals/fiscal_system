@@ -254,6 +254,7 @@ def aplicar_filtros(df, disciplina, assunto, ano, banca, prova, tipo_questao, pe
 
 def validar_questao(tipo_questao, campos):
     campos_obrigatorios = [
+        "codigo",
         "disciplina",
         "enunciado",
         "tipo_questao",
@@ -308,6 +309,12 @@ def render_formulario_nova_questao():
             col1, col2 = st.columns(2)
 
             with col1:
+                codigo = st.number_input(
+                    "Código",
+                    min_value=1,
+                    step=1,
+                    value=proximo_codigo(),
+                )
                 disciplina = st.text_input("Disciplina")
                 assunto = st.text_input("Assunto")
                 banca = st.text_input("Banca")
@@ -328,15 +335,16 @@ def render_formulario_nova_questao():
             gabarito_aberta = ""
 
             if tipo_questao == "Múltipla escolha":
-                st.markdown("#### Alternativas")
-                alternativa_a = st.text_area("Alternativa A")
-                alternativa_b = st.text_area("Alternativa B")
-                alternativa_c = st.text_area("Alternativa C")
-                alternativa_d = st.text_area("Alternativa D")
-                alternativa_e = st.text_area("Alternativa E")
-                alternativa_certa = st.selectbox("Alternativa Certa", ALTERNATIVAS)
+                with st.expander("Alternativas", expanded=True):
+                    alternativa_a = st.text_area("Alternativa A")
+                    alternativa_b = st.text_area("Alternativa B")
+                    alternativa_c = st.text_area("Alternativa C")
+                    alternativa_d = st.text_area("Alternativa D")
+                    alternativa_e = st.text_area("Alternativa E")
+                    alternativa_certa = st.selectbox("Alternativa Certa", ALTERNATIVAS)
             else:
-                gabarito_aberta = st.text_area("Gabarito da Questão Aberta")
+                with st.expander("Gabarito da Questão Aberta", expanded=True):
+                    gabarito_aberta = st.text_area("Gabarito")
 
             comentario_ia = st.text_area("Comentário IA")
 
@@ -344,6 +352,7 @@ def render_formulario_nova_questao():
 
             if salvar:
                 campos = {
+                    "codigo": codigo,
                     "disciplina": disciplina,
                     "enunciado": enunciado,
                     "tipo_questao": tipo_questao,
@@ -363,7 +372,7 @@ def render_formulario_nova_questao():
 
                 questao = {
                     "id_questao": None,
-                    "codigo": proximo_codigo(),
+                    "codigo": int(codigo),
                     "disciplina": disciplina.strip(),
                     "assunto": assunto.strip() or None,
                     "ano": int(ano) if ano else None,
