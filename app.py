@@ -1,5 +1,6 @@
 import streamlit as st
 from pathlib import Path
+from pages.questoes import render as render_questoes
 
 st.set_page_config(
     page_title="Fiscal System",
@@ -50,10 +51,7 @@ st.title("Fiscal System")
 with st.container(border=True):
 
     if st.session_state.page == "Questões":
-        st.subheader("Questões")
-        st.write(
-            "Aqui você encontrará todas as questões disponíveis para estudo."
-        )
+        render_questoes()
 
     elif st.session_state.page == "Simulados":
         st.subheader("Simulados")
