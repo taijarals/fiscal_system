@@ -1,0 +1,26 @@
+.stApp {
+    background-color: #f5f7fa;
+}
+
+h1 {
+    color: #1e3a8a;
+}
+
+h2,
+h3 {
+    color: #374151;
+}
+
+div.stButton > button {
+    border-radius: 10px;
+    height: 45px;
+    font-weight: 600;
+}
+
+div.stButton > button:hover {
+    transform: translateY(-1px);
+}
+
+[data-testid="stVerticalBlock"] {
+    gap: 0.75rem;
+}
