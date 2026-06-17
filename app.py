@@ -1,11 +1,21 @@
 import streamlit as st
 from pathlib import Path
+
 from pages.questoes import render as render_questoes
+
+
+# ======================================================
+# CONFIGURAÇÃO
+# ======================================================
 
 st.set_page_config(
     page_title="Fiscal System",
     layout="wide"
 )
+
+# ======================================================
+# CSS
+# ======================================================
 
 css_path = Path(__file__).parent / "css" / "style.css"
 
@@ -15,8 +25,22 @@ if css_path.exists():
         unsafe_allow_html=True
     )
 
+# ======================================================
+# SESSION STATE
+# ======================================================
+
 if "page" not in st.session_state:
     st.session_state.page = "Questões"
+
+# ======================================================
+# HEADER
+# ======================================================
+
+st.markdown("## Fiscal System")
+
+# ======================================================
+# MENU
+# ======================================================
 
 col1, col2, col3 = st.columns(3)
 
@@ -46,21 +70,18 @@ with col3:
 
 st.divider()
 
-st.title("Fiscal System")
+# ======================================================
+# CONTEÚDO
+# ======================================================
 
-with st.container(border=True):
+if st.session_state.page == "Questões":
 
-    if st.session_state.page == "Questões":
-        render_questoes()
+    render_questoes()
 
-    elif st.session_state.page == "Simulados":
-        st.subheader("Simulados")
-        st.write(
-            "Acesse simulados organizados por tema e nível de dificuldade."
-        )
+elif st.session_state.page == "Simulados":
 
-    elif st.session_state.page == "Indicadores":
-        st.subheader("Indicadores")
-        st.write(
-            "Veja os indicadores de desempenho e progresso do seu estudo."
-        )
+    st.subheader("Simulados")
+
+elif st.session_state.page == "Indicadores":
+
+    st.subheader("Indicadores")
