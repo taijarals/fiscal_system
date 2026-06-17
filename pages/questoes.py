@@ -309,12 +309,13 @@ def render_formulario_nova_questao():
             col1, col2 = st.columns(2)
 
             with col1:
-                codigo = st.number_input(
-                    "Código",
-                    min_value=1,
-                    step=1,
-                    value=proximo_codigo(),
-                )
+                #codigo = st.number_input(
+                #    "Código",
+                #    min_value=1,
+                #    step=1,
+                #    value=proximo_codigo(),
+                #)
+                codigo = st.text_input("Código")
                 disciplina = st.text_input("Disciplina")
                 assunto = st.text_input("Assunto")
                 banca = st.text_input("Banca")
