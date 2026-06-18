@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 
 import pandas as pd
 import requests
@@ -302,6 +303,62 @@ def salvar_questao(questao):
     st.session_state.origem_questoes = "local"
 
 
+def carregar_questoes_json(arquivo_json):
+    try:
+        dados = json.load(arquivo_json)
+    except Exception as erro:
+        raise ValueError(f"Arquivo JSON inválido: {erro}")
+
+    if isinstance(dados, dict):
+        if "questoes" in dados:
+            questoes = dados["questoes"]
+        elif "questions" in dados:
+            questoes = dados["questions"]
+        else:
+            raise ValueError(
+                "JSON deve conter uma lista de questões ou um objeto com a chave 'questoes'."
+            )
+    elif isinstance(dados, list):
+        questoes = dados
+    else:
+        raise ValueError(
+            "Formato JSON inválido. Use uma lista de questões ou um objeto com a chave 'questoes'."
+        )
+
+    if not isinstance(questoes, list):
+        raise ValueError("A chave 'questoes' deve conter uma lista de questões.")
+
+    return questoes
+
+
+def importar_questoes_lote(arquivo_json):
+    questoes = carregar_questoes_json(arquivo_json)
+    if not questoes:
+        raise ValueError("Nenhuma questão encontrada no arquivo JSON.")
+
+    novas_questoes = []
+    for questao in questoes:
+        questao_normalizada = normalizar_questao(questao)
+
+        if not questao_normalizada.get("codigo"):
+            questao_normalizada["codigo"] = proximo_codigo()
+
+        valido, mensagem = validar_questao(
+            questao_normalizada["tipo_questao"], questao_normalizada
+        )
+        if not valido:
+            raise ValueError(
+                f"Erro na questão {questao_normalizada.get('codigo', 'sem código')}: {mensagem}"
+            )
+
+        novas_questoes.append(questao_normalizada)
+
+    for questao in novas_questoes:
+        salvar_questao(questao)
+
+    return len(novas_questoes)
+
+
 def render_formulario_nova_questao():
     @st.dialog("Nova Questão")
     def formulario():
@@ -309,13 +366,12 @@ def render_formulario_nova_questao():
             col1, col2 = st.columns(2)
 
             with col1:
-                #codigo = st.number_input(
-                #    "Código",
-                #    min_value=1,
-                #    step=1,
-                #    value=proximo_codigo(),
-                #)
-                codigo = st.text_input("Código")
+                codigo = st.number_input(
+                    "Código",
+                    min_value=1,
+                    step=1,
+                    value=proximo_codigo(),
+                )
                 disciplina = st.text_input("Disciplina")
                 assunto = st.text_input("Assunto")
                 banca = st.text_input("Banca")
@@ -373,7 +429,7 @@ def render_formulario_nova_questao():
 
                 questao = {
                     "id_questao": None,
-                    "codigo": codigo,
+                    "codigo": int(codigo),
                     "disciplina": disciplina.strip(),
                     "assunto": assunto.strip() or None,
                     "ano": int(ano) if ano else None,
@@ -423,6 +479,29 @@ def render():
     if recarregar:
         inicializar_questoes(forcar_recarregamento=True)
         st.rerun()
+
+    with st.expander("Importar questões em lote", expanded=False):
+        with st.form("importar_questoes_lote"):
+            arquivo_json = st.file_uploader(
+                "Selecione um arquivo JSON",
+                type=["json"],
+                help="O JSON deve conter uma lista de questões ou um objeto com a chave 'questoes'.",
+            )
+            importar_lote = st.form_submit_button(
+                "Importar questões em lote",
+                use_container_width=True,
+            )
+
+            if importar_lote:
+                if not arquivo_json:
+                    st.error("Selecione um arquivo JSON antes de importar.")
+                else:
+                    try:
+                        quantidade = importar_questoes_lote(arquivo_json)
+                        st.success(f"{quantidade} questão(ões) importada(s) com sucesso.")
+                        st.rerun()
+                    except Exception as erro:
+                        st.error(f"Não foi possível importar o lote: {erro}")
 
     if st.session_state.get("origem_questoes") == "supabase":
         st.caption("Dados carregados do Supabase.")
