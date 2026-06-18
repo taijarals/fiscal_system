@@ -47,7 +47,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     if st.button(
         "Questões",
-        use_container_width=True,
+        width='stretch',
         type="primary" if st.session_state.page == "Questões" else "secondary"
     ):
         st.session_state.page = "Questões"
@@ -55,7 +55,7 @@ with col1:
 with col2:
     if st.button(
         "Simulados",
-        use_container_width=True,
+        width='stretch',
         type="primary" if st.session_state.page == "Simulados" else "secondary"
     ):
         st.session_state.page = "Simulados"
@@ -63,7 +63,7 @@ with col2:
 with col3:
     if st.button(
         "Indicadores",
-        use_container_width=True,
+        width='stretch',
         type="primary" if st.session_state.page == "Indicadores" else "secondary"
     ):
         st.session_state.page = "Indicadores"
