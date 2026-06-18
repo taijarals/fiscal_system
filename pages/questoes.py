@@ -405,7 +405,7 @@ def render_formulario_nova_questao():
 
             comentario_ia = st.text_area("Comentário IA")
 
-            salvar = st.form_submit_button("Salvar", use_container_width=True)
+            salvar = st.form_submit_button("Salvar", width='stretch)
 
             if salvar:
                 campos = {
@@ -471,10 +471,10 @@ def render():
         st.subheader("Questões")
 
     with col2:
-        nova_questao = st.button("Nova Questão", use_container_width=True)
+        nova_questao = st.button("Nova Questão", width='stretch)
 
     with col3:
-        recarregar = st.button("Recarregar", use_container_width=True)
+        recarregar = st.button("Recarregar", width='stretch)
 
     if recarregar:
         inicializar_questoes(forcar_recarregamento=True)
@@ -489,7 +489,7 @@ def render():
             )
             importar_lote = st.form_submit_button(
                 "Importar questões em lote",
-                use_container_width=True,
+                width='stretch,
             )
 
             if importar_lote:
@@ -542,7 +542,7 @@ def render():
 
     st.dataframe(
         df_filtrado[COLUNAS_LISTAGEM],
-        use_container_width=True,
+        width='stretch,
         hide_index=True,
     )
 
