@@ -373,7 +373,7 @@ def render_formulario_nova_questao():
 
                 questao = {
                     "id_questao": None,
-                    "codigo": int(codigo),
+                    "codigo": codigo,
                     "disciplina": disciplina.strip(),
                     "assunto": assunto.strip() or None,
                     "ano": int(ano) if ano else None,
