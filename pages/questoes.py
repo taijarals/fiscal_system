@@ -216,22 +216,44 @@ def opcoes_filtro(df, coluna, opcao_padrao):
 def aplicar_filtros(df, disciplina, assunto, ano, banca, prova, tipo_questao, pesquisa):
     df_filtrado = df.copy()
 
-    if disciplina != "Todas":
+    # Suporte para filtros com lista múltipla
+    # Se for uma string, usar lógica anterior (compatibilidade)
+    # Se for uma lista, verificar se algum item da lista está no DataFrame
+    
+    if isinstance(disciplina, list):
+        if disciplina and disciplina != ["Todas"]:
+            df_filtrado = df_filtrado[df_filtrado["disciplina"].astype(str).isin(disciplina)]
+    elif disciplina != "Todas":
         df_filtrado = df_filtrado[df_filtrado["disciplina"].astype(str) == disciplina]
 
-    if assunto != "Todos":
+    if isinstance(assunto, list):
+        if assunto and assunto != ["Todos"]:
+            df_filtrado = df_filtrado[df_filtrado["assunto"].astype(str).isin(assunto)]
+    elif assunto != "Todos":
         df_filtrado = df_filtrado[df_filtrado["assunto"].astype(str) == assunto]
 
-    if ano != "Todos":
+    if isinstance(ano, list):
+        if ano and ano != ["Todos"]:
+            df_filtrado = df_filtrado[df_filtrado["ano"].astype(str).isin(ano)]
+    elif ano != "Todos":
         df_filtrado = df_filtrado[df_filtrado["ano"].astype(str) == ano]
 
-    if banca != "Todas":
+    if isinstance(banca, list):
+        if banca and banca != ["Todas"]:
+            df_filtrado = df_filtrado[df_filtrado["banca"].astype(str).isin(banca)]
+    elif banca != "Todas":
         df_filtrado = df_filtrado[df_filtrado["banca"].astype(str) == banca]
 
-    if prova != "Todas":
+    if isinstance(prova, list):
+        if prova and prova != ["Todas"]:
+            df_filtrado = df_filtrado[df_filtrado["prova"].astype(str).isin(prova)]
+    elif prova != "Todas":
         df_filtrado = df_filtrado[df_filtrado["prova"].astype(str) == prova]
 
-    if tipo_questao != "Todos":
+    if isinstance(tipo_questao, list):
+        if tipo_questao and tipo_questao != ["Todos"]:
+            df_filtrado = df_filtrado[df_filtrado["tipo_questao"].astype(str).isin(tipo_questao)]
+    elif tipo_questao != "Todos":
         df_filtrado = df_filtrado[df_filtrado["tipo_questao"].astype(str) == tipo_questao]
 
     if pesquisa:

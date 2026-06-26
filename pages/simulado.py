@@ -21,17 +21,17 @@ def inicializar_simulado_state():
         st.session_state.simulado_indice = 0
         st.session_state.simulado_finalizado = False
     
-    # Inicializar filtros
+    # Inicializar filtros como listas vazias (significa selecionar tudo)
     if "simulado_filtro_disciplina" not in st.session_state:
-        st.session_state.simulado_filtro_disciplina = "Todas"
+        st.session_state.simulado_filtro_disciplina = []
     if "simulado_filtro_assunto" not in st.session_state:
-        st.session_state.simulado_filtro_assunto = "Todos"
+        st.session_state.simulado_filtro_assunto = []
     if "simulado_filtro_banca" not in st.session_state:
-        st.session_state.simulado_filtro_banca = "Todas"
+        st.session_state.simulado_filtro_banca = []
     if "simulado_filtro_ano" not in st.session_state:
-        st.session_state.simulado_filtro_ano = "Todos"
+        st.session_state.simulado_filtro_ano = []
     if "simulado_filtro_prova" not in st.session_state:
-        st.session_state.simulado_filtro_prova = "Todas"
+        st.session_state.simulado_filtro_prova = []
 
 
 def selecionar_questoes_simulado(questoes, numero_questoes):
@@ -96,89 +96,64 @@ def render_selecao_simulado():
     col_limpar = st.columns([6, 1])
     with col_limpar[1]:
         if st.button("🔄 Limpar Filtros", width='stretch'):
-            st.session_state.simulado_filtro_disciplina = "Todas"
-            st.session_state.simulado_filtro_assunto = "Todos"
-            st.session_state.simulado_filtro_banca = "Todas"
-            st.session_state.simulado_filtro_ano = "Todos"
-            st.session_state.simulado_filtro_prova = "Todas"
+            st.session_state.simulado_filtro_disciplina = []
+            st.session_state.simulado_filtro_assunto = []
+            st.session_state.simulado_filtro_banca = []
+            st.session_state.simulado_filtro_ano = []
+            st.session_state.simulado_filtro_prova = []
             st.rerun()
     
     col1, col2 = st.columns(2)
     
     with col1:
-        opcoes_disciplina = opcoes_filtro(df, "disciplina", "Todas")
-        idx_disciplina = (
-            opcoes_disciplina.index(st.session_state.simulado_filtro_disciplina)
-            if st.session_state.simulado_filtro_disciplina in opcoes_disciplina
-            else 0
-        )
-        disciplina = st.selectbox(
+        opcoes_disciplina = [opt for opt in opcoes_filtro(df, "disciplina", "") if opt]
+        disciplina = st.multiselect(
             "Filtrar por disciplina",
             opcoes_disciplina,
-            index=idx_disciplina,
+            default=st.session_state.simulado_filtro_disciplina,
             key="select_disciplina"
         )
         st.session_state.simulado_filtro_disciplina = disciplina
         
-        opcoes_banca = opcoes_filtro(df, "banca", "Todas")
-        idx_banca = (
-            opcoes_banca.index(st.session_state.simulado_filtro_banca)
-            if st.session_state.simulado_filtro_banca in opcoes_banca
-            else 0
-        )
-        banca = st.selectbox(
+        opcoes_banca = [opt for opt in opcoes_filtro(df, "banca", "") if opt]
+        banca = st.multiselect(
             "Filtrar por banca",
             opcoes_banca,
-            index=idx_banca,
+            default=st.session_state.simulado_filtro_banca,
             key="select_banca"
         )
         st.session_state.simulado_filtro_banca = banca
         
-        opcoes_ano = opcoes_filtro(df, "ano", "Todos")
-        idx_ano = (
-            opcoes_ano.index(st.session_state.simulado_filtro_ano)
-            if st.session_state.simulado_filtro_ano in opcoes_ano
-            else 0
-        )
-        ano = st.selectbox(
+        opcoes_ano = [opt for opt in opcoes_filtro(df, "ano", "") if opt]
+        ano = st.multiselect(
             "Filtrar por ano",
             opcoes_ano,
-            index=idx_ano,
+            default=st.session_state.simulado_filtro_ano,
             key="select_ano"
         )
         st.session_state.simulado_filtro_ano = ano
     
     with col2:
-        opcoes_assunto = opcoes_filtro(df, "assunto", "Todos")
-        idx_assunto = (
-            opcoes_assunto.index(st.session_state.simulado_filtro_assunto)
-            if st.session_state.simulado_filtro_assunto in opcoes_assunto
-            else 0
-        )
-        assunto = st.selectbox(
+        opcoes_assunto = [opt for opt in opcoes_filtro(df, "assunto", "") if opt]
+        assunto = st.multiselect(
             "Filtrar por assunto",
             opcoes_assunto,
-            index=idx_assunto,
+            default=st.session_state.simulado_filtro_assunto,
             key="select_assunto"
         )
         st.session_state.simulado_filtro_assunto = assunto
         
-        opcoes_prova = opcoes_filtro(df, "prova", "Todas")
-        idx_prova = (
-            opcoes_prova.index(st.session_state.simulado_filtro_prova)
-            if st.session_state.simulado_filtro_prova in opcoes_prova
-            else 0
-        )
-        prova = st.selectbox(
+        opcoes_prova = [opt for opt in opcoes_filtro(df, "prova", "") if opt]
+        prova = st.multiselect(
             "Filtrar por prova",
             opcoes_prova,
-            index=idx_prova,
+            default=st.session_state.simulado_filtro_prova,
             key="select_prova"
         )
         st.session_state.simulado_filtro_prova = prova
     
     df_filtrado = aplicar_filtros(
-        df, disciplina, assunto, ano, banca, prova, "Todos", ""
+        df, disciplina, assunto, ano, banca, prova, [], ""
     )
     
     quantidade_filtrada = int(len(df_filtrado))
