@@ -2,6 +2,7 @@ import streamlit as st
 from pathlib import Path
 
 from pages.questoes import render as render_questoes
+from pages.simulado import render as render_simulados
 
 
 # ======================================================
@@ -80,7 +81,7 @@ if st.session_state.page == "Questões":
 
 elif st.session_state.page == "Simulados":
 
-    st.subheader("Simulados")
+    render_simulados()
 
 elif st.session_state.page == "Indicadores":
 
