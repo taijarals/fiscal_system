@@ -192,7 +192,7 @@ def render_selecao_simulado():
         "Quantas questões deseja resolver?",
         min_value=1,
         max_value=max(1, quantidade_filtrada),
-        value=min(10, quantidade_filtrada),
+        value=max(1, min(10, quantidade_filtrada)),
     )
     
     if st.button("Iniciar Simulado", width='stretch', type='primary'):
