@@ -188,16 +188,21 @@ def render_selecao_simulado():
         st.warning("Nenhuma questão encontrada com os filtros aplicados.")
         return
     
-    min_value = 1
-    max_value = int(max(1, quantidade_filtrada))
-    default_value = int(min(10, quantidade_filtrada))
-    
-    numero_questoes = st.slider(
-        "Quantas questões deseja resolver?",
-        min_value=min_value,
-        max_value=max_value,
-        value=default_value,
-    )
+    # Se há apenas 1 questão, usar essa quantidade
+    if quantidade_filtrada == 1:
+        numero_questoes = 1
+        st.write("Apenas 1 questão disponível. Ela será usada no simulado.")
+    else:
+        min_value = 1
+        max_value = int(quantidade_filtrada)
+        default_value = int(min(10, quantidade_filtrada))
+        
+        numero_questoes = st.slider(
+            "Quantas questões deseja resolver?",
+            min_value=min_value,
+            max_value=max_value,
+            value=default_value,
+        )
     
     if st.button("Iniciar Simulado", width='stretch', type='primary'):
         questoes_lista = df_filtrado.to_dict('records')
