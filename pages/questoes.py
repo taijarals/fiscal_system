@@ -519,18 +519,33 @@ def render():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        disciplina = st.selectbox("Disciplina", opcoes_filtro(df, "disciplina", "Todas"))
-        banca = st.selectbox("Banca", opcoes_filtro(df, "banca", "Todas"))
+        disciplina = st.selectbox("Disciplina", opcoes_filtro(df, "disciplina", "Todas"), key="filtro_disciplina")
+        banca = st.selectbox("Banca", opcoes_filtro(df, "banca", "Todas"), key="filtro_banca")
 
     with col2:
-        assunto = st.selectbox("Assunto", opcoes_filtro(df, "assunto", "Todos"))
-        prova = st.selectbox("Prova", opcoes_filtro(df, "prova", "Todas"))
+        assunto = st.selectbox("Assunto", opcoes_filtro(df, "assunto", "Todos"), key="filtro_assunto")
+        prova = st.selectbox("Prova", opcoes_filtro(df, "prova", "Todas"), key="filtro_prova")
 
     with col3:
-        ano = st.selectbox("Ano", opcoes_filtro(df, "ano", "Todos"))
-        tipo_questao = st.selectbox("Tipo", ["Todos"] + TIPOS_QUESTAO)
+        ano = st.selectbox("Ano", opcoes_filtro(df, "ano", "Todos"), key="filtro_ano")
+        tipo_questao = st.selectbox("Tipo", ["Todos"] + TIPOS_QUESTAO, key="filtro_tipo")
 
-    pesquisa = st.text_input("Pesquisar")
+    col_pesquisa, col_limpar = st.columns([3, 1])
+
+    with col_pesquisa:
+        pesquisa = st.text_input("Pesquisar", key="filtro_pesquisa")
+
+    with col_limpar:
+        st.write("")  # Espaçamento vertical
+        if st.button("Limpar Filtros", width='stretch'):
+            st.session_state.filtro_disciplina = "Todas"
+            st.session_state.filtro_banca = "Todas"
+            st.session_state.filtro_assunto = "Todos"
+            st.session_state.filtro_prova = "Todas"
+            st.session_state.filtro_ano = "Todos"
+            st.session_state.filtro_tipo = "Todos"
+            st.session_state.filtro_pesquisa = ""
+            st.rerun()
 
     st.divider()
 
