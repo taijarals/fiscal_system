@@ -181,18 +181,22 @@ def render_selecao_simulado():
         df, disciplina, assunto, ano, banca, prova, "Todos", ""
     )
     
-    quantidade_filtrada = len(df_filtrado)
+    quantidade_filtrada = int(len(df_filtrado))
     st.info(f"**{quantidade_filtrada}** questão(ões) disponível(is) com os filtros aplicados.")
     
     if quantidade_filtrada == 0:
         st.warning("Nenhuma questão encontrada com os filtros aplicados.")
         return
     
+    min_value = 1
+    max_value = int(max(1, quantidade_filtrada))
+    default_value = int(min(10, quantidade_filtrada))
+    
     numero_questoes = st.slider(
         "Quantas questões deseja resolver?",
-        min_value=1,
-        max_value=max(1, quantidade_filtrada),
-        value=max(1, min(10, quantidade_filtrada)),
+        min_value=min_value,
+        max_value=max_value,
+        value=default_value,
     )
     
     if st.button("Iniciar Simulado", width='stretch', type='primary'):
