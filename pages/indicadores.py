@@ -107,26 +107,50 @@ def render():
 
     st.divider()
 
-    evolucao = df[["created_at", "percentual"]].dropna()
-    if not evolucao.empty:
-        st.markdown("### Evolução ao longo do tempo")
-        st.line_chart(evolucao.set_index("created_at")["percentual"], use_container_width=True)
+    view = st.radio(
+        "Visualizar por",
+        ["Tempo", "Disciplina", "Assunto"],
+        horizontal=True,
+        key="indicadores_view",
+    )
 
-    st.divider()
-
-    if "disciplina" in df.columns:
-        desempenho_por_disciplina = (
-            df.groupby("disciplina")["percentual"]
-            .mean()
-            .reset_index()
-            .dropna()
-        )
-        if not desempenho_por_disciplina.empty:
-            st.markdown("### Desempenho por disciplina")
-            st.bar_chart(
-                desempenho_por_disciplina.set_index("disciplina")["percentual"],
-                use_container_width=True,
+    if view == "Tempo":
+        evolucao = df[["created_at", "percentual"]].dropna()
+        if not evolucao.empty:
+            st.markdown("### Evolução ao longo do tempo")
+            st.line_chart(evolucao.set_index("created_at")["percentual"], use_container_width=True)
+    elif view == "Disciplina":
+        if "disciplina" in df.columns:
+            desempenho_por_disciplina = (
+                df.groupby("disciplina")["percentual"]
+                .mean()
+                .reset_index()
+                .dropna()
             )
+            if not desempenho_por_disciplina.empty:
+                st.markdown("### Desempenho por disciplina")
+                st.bar_chart(
+                    desempenho_por_disciplina.set_index("disciplina")["percentual"],
+                    use_container_width=True,
+                )
+            else:
+                st.info("Não há dados suficientes para agrupar por disciplina.")
+    else:
+        if "assunto" in df.columns:
+            desempenho_por_assunto = (
+                df.groupby("assunto")["percentual"]
+                .mean()
+                .reset_index()
+                .dropna()
+            )
+            if not desempenho_por_assunto.empty:
+                st.markdown("### Desempenho por assunto")
+                st.bar_chart(
+                    desempenho_por_assunto.set_index("assunto")["percentual"],
+                    use_container_width=True,
+                )
+            else:
+                st.info("Não há dados suficientes para agrupar por assunto.")
 
     st.divider()
 
