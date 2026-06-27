@@ -60,28 +60,75 @@ def autenticar(usuario, senha):
     return usuario == "admin" and senha == "admin123"
 
 
+def criar_usuario_supabase(email, senha):
+    url, key = obter_config_supabase()
+
+    if not (url and key):
+        return False, "Cadastro via Supabase não está configurado."
+
+    try:
+        resposta = requests.post(
+            f"{url}/auth/v1/signup",
+            headers={
+                "apikey": key,
+                "Content-Type": "application/json",
+            },
+            json={"email": email, "password": senha},
+            timeout=15,
+        )
+        resposta.raise_for_status()
+        return True, "Usuário criado com sucesso. Você já pode entrar."
+    except Exception as erro:
+        mensagem = str(erro)
+        if "User already registered" in mensagem:
+            return False, "Este e-mail já está cadastrado."
+        return False, f"Não foi possível criar o usuário: {mensagem}"
+
+
 def render_login():
     st.markdown("<div class='login-card'>", unsafe_allow_html=True)
     st.markdown("### Acesso ao sistema")
     st.caption("Entre com sua conta do Supabase Auth ou use o acesso local de desenvolvimento.")
 
-    with st.form("login_form"):
-        usuario = st.text_input("E-mail", placeholder="seu@email.com")
-        senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
-        enviado = st.form_submit_button("Entrar", use_container_width=True, type="primary")
+    tab_login, tab_cadastro = st.tabs(["Entrar", "Criar conta"])
 
-        if enviado:
-            if autenticar(usuario, senha):
-                st.session_state.authenticated = True
-                st.session_state.username = usuario
-                st.session_state.page = "Questões"
-                st.rerun()
-            else:
-                st.error("Credenciais inválidas.")
+    with tab_login:
+        with st.form("login_form"):
+            usuario = st.text_input("E-mail", placeholder="seu@email.com")
+            senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+            enviado = st.form_submit_button("Entrar", use_container_width=True, type="primary")
+
+            if enviado:
+                if autenticar(usuario, senha):
+                    st.session_state.authenticated = True
+                    st.session_state.username = usuario
+                    st.session_state.page = "Questões"
+                    st.rerun()
+                else:
+                    st.error("Credenciais inválidas.")
+
+    with tab_cadastro:
+        with st.form("signup_form"):
+            novo_email = st.text_input("E-mail", placeholder="novo@email.com", key="signup_email")
+            nova_senha = st.text_input("Senha", type="password", placeholder="Crie uma senha", key="signup_senha")
+            confirmar_senha = st.text_input("Confirmar senha", type="password", placeholder="Repita a senha", key="signup_confirmar")
+            cadastrar = st.form_submit_button("Criar conta", use_container_width=True, type="primary")
+
+            if cadastrar:
+                if not novo_email or not nova_senha:
+                    st.error("Preencha e-mail e senha para criar a conta.")
+                elif nova_senha != confirmar_senha:
+                    st.error("As senhas não coincidem.")
+                else:
+                    sucesso, mensagem = criar_usuario_supabase(novo_email, nova_senha)
+                    if sucesso:
+                        st.success(mensagem)
+                    else:
+                        st.error(mensagem)
 
     st.markdown("</div>", unsafe_allow_html=True)
     st.caption(
-        "Se estiver usando o Supabase, crie o usuário no painel de Auth do projeto. Sem configuração, o fallback é admin/admin123."
+        "Se estiver usando o Supabase, crie o usuário no painel de Auth ou pela aba acima. Sem configuração, o fallback é admin/admin123."
     )
 
 
