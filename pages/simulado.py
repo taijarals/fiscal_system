@@ -2,10 +2,12 @@ from copy import deepcopy
 import random
 
 import pandas as pd
+import requests
 import streamlit as st
 
 from pages.questoes import (
     inicializar_questoes,
+    obter_config_supabase,
     opcoes_filtro,
     aplicar_filtros,
     normalizar_questao,
@@ -20,6 +22,7 @@ def inicializar_simulado_state():
         st.session_state.simulado_respostas = {}
         st.session_state.simulado_indice = 0
         st.session_state.simulado_finalizado = False
+        st.session_state.simulado_resultado_salvo = False
     
     # Inicializar filtros como listas vazias (significa selecionar tudo)
     if "simulado_filtro_disciplina" not in st.session_state:
@@ -54,6 +57,7 @@ def iniciar_simulado(questoes_selecionadas):
     }
     st.session_state.simulado_indice = 0
     st.session_state.simulado_finalizado = False
+    st.session_state.simulado_resultado_salvo = False
 
 
 def finalizar_simulado():
@@ -83,6 +87,93 @@ def calcular_resultado():
     
     percentual = (acertos / total * 100) if total > 0 else 0
     return acertos, total, percentual
+
+
+def montar_payload_resultado():
+    """Prepara o payload para salvar o resultado no Supabase."""
+    acertos, total, percentual = calcular_resultado()
+    respostas = st.session_state.simulado_respostas
+    questoes = st.session_state.simulado_questoes
+
+    respostas_salvar = {
+        str(i): {
+            "resposta": item.get("resposta", ""),
+            "marcada_para_revisao": item.get("marcada_para_revisao", False),
+        }
+        for i, item in respostas.items()
+    }
+
+    questoes_salvar = [
+        {
+            "codigo": questao.get("codigo"),
+            "disciplina": questao.get("disciplina"),
+            "assunto": questao.get("assunto"),
+            "banca": questao.get("banca"),
+            "prova": questao.get("prova"),
+            "tipo_questao": questao.get("tipo_questao"),
+            "alternativa_certa": questao.get("alternativa_certa"),
+        }
+        for questao in questoes
+    ]
+
+    auth_user = st.session_state.get("auth_user", {}) or {}
+    username = st.session_state.get("username") or auth_user.get("email") or "anonymous"
+
+    return {
+        "user_id": auth_user.get("id") or username,
+        "user_email": auth_user.get("email") or username,
+        "acertos": acertos,
+        "total_questoes": total,
+        "percentual": round(percentual, 2),
+        "nao_respondidas": sum(1 for item in respostas.values() if item.get("resposta", "") == ""),
+        "marcadas_para_revisao": sum(1 for item in respostas.values() if item.get("marcada_para_revisao", False)),
+        "respostas": respostas_salvar,
+        "questoes": questoes_salvar,
+        "disciplina": questoes[0].get("disciplina") if questoes else None,
+        "assunto": questoes[0].get("assunto") if questoes else None,
+        "banca": questoes[0].get("banca") if questoes else None,
+        "prova": questoes[0].get("prova") if questoes else None,
+        "tipo_simulado": "simulado",
+    }
+
+
+def salvar_resultado_simulado():
+    """Salva o resultado do simulado no Supabase quando possível."""
+    if st.session_state.get("simulado_resultado_salvo"):
+        return True
+
+    payload = montar_payload_resultado()
+    url, key = obter_config_supabase()
+
+    if not (url and key):
+        st.session_state.simulado_resultado_salvo = True
+        return False
+
+    token = st.session_state.get("auth_token")
+    headers = {
+        "apikey": key,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    else:
+        headers["Authorization"] = f"Bearer {key}"
+
+    try:
+        resposta = requests.post(
+            f"{url}/rest/v1/fs_simulado_resultados",
+            headers=headers,
+            json=payload,
+            timeout=15,
+        )
+        resposta.raise_for_status()
+        st.session_state.simulado_resultado_salvo = True
+        return True
+    except Exception:
+        st.session_state.simulado_resultado_salvo = False
+        return False
 
 
 def render_selecao_simulado():
@@ -290,6 +381,13 @@ def render_questao_simulado():
 def render_resultado_simulado():
     """Renderiza o resultado do simulado."""
     st.subheader("Resultado do Simulado")
+
+    if not st.session_state.get("simulado_resultado_salvo"):
+        salvo = salvar_resultado_simulado()
+        if salvo:
+            st.success("Resultado salvo no Supabase para análise futura.")
+        else:
+            st.caption("O resultado foi calculado localmente. Se quiser, configure o Supabase para persistir os dados automaticamente.")
     
     acertos, total, percentual = calcular_resultado()
     
