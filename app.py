@@ -3,6 +3,7 @@ from pathlib import Path
 import requests
 import streamlit as st
 
+from pages.indicadores import render as render_indicadores
 from pages.questoes import obter_config_supabase, render as render_questoes
 from pages.simulado import render as render_simulados
 
@@ -201,6 +202,6 @@ if st.session_state.authenticated:
         render_simulados()
 
     elif st.session_state.page == "Indicadores":
-        st.subheader("Indicadores")
+        render_indicadores()
 else:
     render_login()
