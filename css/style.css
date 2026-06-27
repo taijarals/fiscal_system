@@ -100,6 +100,23 @@ textarea {
     background-color: white;
 }
 
+.login-card {
+    max-width: 480px;
+    margin: 2rem auto 0;
+    padding: 2rem;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.login-card [data-testid="stForm"] {
+    border: none;
+    padding: 0;
+    background-color: transparent;
+    box-shadow: none;
+}
+
 /* =======================================================
    DATAFRAME
 ======================================================= */
