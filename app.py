@@ -1,7 +1,9 @@
-import streamlit as st
 from pathlib import Path
 
-from pages.questoes import render as render_questoes
+import requests
+import streamlit as st
+
+from pages.questoes import obter_config_supabase, render as render_questoes
 from pages.simulado import render as render_simulados
 
 
@@ -31,22 +33,29 @@ if css_path.exists():
 # ======================================================
 
 
-def obter_credenciais():
-    try:
-        secao_auth = st.secrets.get("auth", {})
-        usuario = st.secrets.get("AUTH_USERNAME") or secao_auth.get("username")
-        senha = st.secrets.get("AUTH_PASSWORD") or secao_auth.get("password")
-    except Exception:
-        return None, None
-
-    return usuario, senha
-
-
 def autenticar(usuario, senha):
-    usuario_config, senha_config = obter_credenciais()
+    url, key = obter_config_supabase()
 
-    if usuario_config and senha_config:
-        return usuario == usuario_config and senha == senha_config
+    if url and key:
+        try:
+            resposta = requests.post(
+                f"{url}/auth/v1/token?grant_type=password",
+                headers={
+                    "apikey": key,
+                    "Content-Type": "application/json",
+                },
+                json={"email": usuario, "password": senha},
+                timeout=15,
+            )
+            resposta.raise_for_status()
+            dados = resposta.json()
+            st.session_state.auth_token = dados.get("access_token")
+            st.session_state.auth_user = dados.get("user", {})
+            return True
+        except Exception:
+            st.session_state.auth_token = None
+            st.session_state.auth_user = {}
+            return False
 
     return usuario == "admin" and senha == "admin123"
 
@@ -54,10 +63,10 @@ def autenticar(usuario, senha):
 def render_login():
     st.markdown("<div class='login-card'>", unsafe_allow_html=True)
     st.markdown("### Acesso ao sistema")
-    st.caption("Informe suas credenciais para continuar.")
+    st.caption("Entre com sua conta do Supabase Auth ou use o acesso local de desenvolvimento.")
 
     with st.form("login_form"):
-        usuario = st.text_input("Usuário", placeholder="Digite seu usuário")
+        usuario = st.text_input("E-mail", placeholder="seu@email.com")
         senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
         enviado = st.form_submit_button("Entrar", use_container_width=True, type="primary")
 
@@ -68,11 +77,11 @@ def render_login():
                 st.session_state.page = "Questões"
                 st.rerun()
             else:
-                st.error("Usuário ou senha inválidos.")
+                st.error("Credenciais inválidas.")
 
     st.markdown("</div>", unsafe_allow_html=True)
     st.caption(
-        "Credenciais padrão: admin / admin123. Para produção, configure AUTH_USERNAME e AUTH_PASSWORD em .streamlit/secrets.toml."
+        "Se estiver usando o Supabase, crie o usuário no painel de Auth do projeto. Sem configuração, o fallback é admin/admin123."
     )
 
 
