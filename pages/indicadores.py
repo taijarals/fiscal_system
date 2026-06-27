@@ -121,14 +121,22 @@ def render():
             st.line_chart(evolucao.set_index("created_at")["percentual"], use_container_width=True)
     elif view == "Disciplina":
         if "disciplina" in df.columns:
+            disciplinas = sorted([valor for valor in df["disciplina"].dropna().astype(str).unique() if valor])
+            disciplina_selecionada = st.selectbox(
+                "Selecione uma disciplina",
+                ["Todas"] + disciplinas,
+                key="indicador_disciplina",
+            )
+            dados_filtrados = df if disciplina_selecionada == "Todas" else df[df["disciplina"].astype(str) == disciplina_selecionada]
+
             desempenho_por_disciplina = (
-                df.groupby("disciplina")["percentual"]
+                dados_filtrados.groupby("disciplina")["percentual"]
                 .mean()
                 .reset_index()
                 .dropna()
             )
             if not desempenho_por_disciplina.empty:
-                st.markdown("### Desempenho por disciplina")
+                st.markdown(f"### Desempenho por disciplina{f' - {disciplina_selecionada}' if disciplina_selecionada != 'Todas' else ''}")
                 st.bar_chart(
                     desempenho_por_disciplina.set_index("disciplina")["percentual"],
                     use_container_width=True,
@@ -137,14 +145,22 @@ def render():
                 st.info("Não há dados suficientes para agrupar por disciplina.")
     else:
         if "assunto" in df.columns:
+            assuntos = sorted([valor for valor in df["assunto"].dropna().astype(str).unique() if valor])
+            assunto_selecionado = st.selectbox(
+                "Selecione um assunto",
+                ["Todos"] + assuntos,
+                key="indicador_assunto",
+            )
+            dados_filtrados = df if assunto_selecionado == "Todos" else df[df["assunto"].astype(str) == assunto_selecionado]
+
             desempenho_por_assunto = (
-                df.groupby("assunto")["percentual"]
+                dados_filtrados.groupby("assunto")["percentual"]
                 .mean()
                 .reset_index()
                 .dropna()
             )
             if not desempenho_por_assunto.empty:
-                st.markdown("### Desempenho por assunto")
+                st.markdown(f"### Desempenho por assunto{f' - {assunto_selecionado}' if assunto_selecionado != 'Todos' else ''}")
                 st.bar_chart(
                     desempenho_por_assunto.set_index("assunto")["percentual"],
                     use_container_width=True,
