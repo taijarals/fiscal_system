@@ -160,7 +160,7 @@ if st.session_state.authenticated:
 
     with col1:
         if st.button(
-            "Questões",
+            "📋 Questões",
             width='stretch',
             type="primary" if st.session_state.page == "Questões" else "secondary"
         ):
@@ -168,7 +168,7 @@ if st.session_state.authenticated:
 
     with col2:
         if st.button(
-            "Simulados",
+            "📝 Simulados",
             width='stretch',
             type="primary" if st.session_state.page == "Simulados" else "secondary"
         ):
@@ -176,14 +176,14 @@ if st.session_state.authenticated:
 
     with col3:
         if st.button(
-            "Indicadores",
+            "📊 Indicadores",
             width='stretch',
             type="primary" if st.session_state.page == "Indicadores" else "secondary"
         ):
             st.session_state.page = "Indicadores"
 
     with col4:
-        if st.button("Sair", width='stretch', type="secondary"):
+        if st.button("🚪 Sair", width='stretch', type="secondary"):
             st.session_state.authenticated = False
             st.session_state.username = ""
             st.session_state.page = "Questões"
