@@ -90,7 +90,7 @@ def calcular_resultado():
 
 
 def montar_payload_resultado():
-    """Prepara o payload para salvar o resultado no Supabase."""
+    """Prepara o payload resumido para salvar o resultado no Supabase."""
     acertos, total, percentual = calcular_resultado()
     respostas = st.session_state.simulado_respostas
     questoes = st.session_state.simulado_questoes
@@ -137,12 +137,58 @@ def montar_payload_resultado():
     }
 
 
+def montar_payload_questoes_resultado():
+    """Prepara os registros individuais para a tabela fs_questoes_resultados."""
+    respostas = st.session_state.simulado_respostas
+    questoes = st.session_state.simulado_questoes
+
+    auth_user = st.session_state.get("auth_user", {}) or {}
+    username = st.session_state.get("username") or auth_user.get("email") or "anonymous"
+
+    registros = []
+    for indice, questao in enumerate(questoes):
+        resposta = respostas[indice].get("resposta", "")
+        marcada_para_revisao = respostas[indice].get("marcada_para_revisao", False)
+        acertou = None
+
+        if questao.get("tipo_questao") == "Múltipla escolha":
+            acertou = resposta == questao.get("alternativa_certa")
+
+        registros.append({
+            "user_id": auth_user.get("id") or username,
+            "user_email": auth_user.get("email") or username,
+            "codigo": questao.get("codigo"),
+            "disciplina": questao.get("disciplina"),
+            "assunto": questao.get("assunto"),
+            "banca": questao.get("banca"),
+            "prova": questao.get("prova"),
+            "tipo_questao": questao.get("tipo_questao"),
+            "alternativa_certa": questao.get("alternativa_certa"),
+            "resposta": resposta,
+            "acertou": acertou,
+            "percentual": 100 if acertou is True else 0 if acertou is False else None,
+            "marcada_para_revisao": marcada_para_revisao,
+            "enunciado": questao.get("enunciado"),
+            "alternativa_a": questao.get("alternativa_a"),
+            "alternativa_b": questao.get("alternativa_b"),
+            "alternativa_c": questao.get("alternativa_c"),
+            "alternativa_d": questao.get("alternativa_d"),
+            "alternativa_e": questao.get("alternativa_e"),
+            "comentario_ia": questao.get("comentario_ia"),
+            "gabarito_aberta": questao.get("gabarito_aberta"),
+            "tipo_simulado": "simulado",
+        })
+
+    return registros
+
+
 def salvar_resultado_simulado():
     """Salva o resultado do simulado no Supabase quando possível."""
     if st.session_state.get("simulado_resultado_salvo"):
         return True
 
     payload = montar_payload_resultado()
+    payload_questoes = montar_payload_questoes_resultado()
     url, key = obter_config_supabase()
 
     if not (url and key):
@@ -162,13 +208,18 @@ def salvar_resultado_simulado():
         headers["Authorization"] = f"Bearer {key}"
 
     try:
-        resposta = requests.post(
+        requests.post(
+            f"{url}/rest/v1/fs_questoes_resultados",
+            headers=headers,
+            json=payload_questoes,
+            timeout=15,
+        ).raise_for_status()
+        requests.post(
             f"{url}/rest/v1/fs_simulado_resultados",
             headers=headers,
             json=payload,
             timeout=15,
-        )
-        resposta.raise_for_status()
+        ).raise_for_status()
         st.session_state.simulado_resultado_salvo = True
         return True
     except Exception:

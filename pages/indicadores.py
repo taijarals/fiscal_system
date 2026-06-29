@@ -5,33 +5,15 @@ import streamlit as st
 from pages.questoes import obter_config_supabase
 
 
-TABLE = "fs_simulado_resultados"
+TABELA_QUESTOES = "fs_questoes_resultados"
+TABELA_SIMULADO = "fs_simulado_resultados"
 
 
-def normalizar_resultado(item):
-    return {
-        "id": item.get("id"),
-        "created_at": item.get("created_at"),
-        "user_id": item.get("user_id"),
-        "user_email": item.get("user_email"),
-        "acertos": int(item.get("acertos", 0) or 0),
-        "total_questoes": int(item.get("total_questoes", 0) or 0),
-        "percentual": float(item.get("percentual", 0) or 0),
-        "nao_respondidas": int(item.get("nao_respondidas", 0) or 0),
-        "marcadas_para_revisao": int(item.get("marcadas_para_revisao", 0) or 0),
-        "disciplina": item.get("disciplina"),
-        "assunto": item.get("assunto"),
-        "banca": item.get("banca"),
-        "prova": item.get("prova"),
-        "tipo_simulado": item.get("tipo_simulado"),
-    }
-
-
-def carregar_resultados():
+def obter_headers():
     url, key = obter_config_supabase()
 
     if not (url and key):
-        return [], "sem_config"
+        return None, None, None
 
     token = st.session_state.get("auth_token")
     headers = {
@@ -44,22 +26,104 @@ def carregar_resultados():
     else:
         headers["Authorization"] = f"Bearer {key}"
 
-    try:
-        resposta = requests.get(
-            f"{url}/rest/v1/{TABLE}",
-            headers=headers,
-            params={
-                "select": "*",
-                "order": "created_at.desc",
-            },
-            timeout=15,
-        )
-        resposta.raise_for_status()
-        dados = resposta.json()
-        return [normalizar_resultado(item) for item in dados], "supabase"
-    except Exception as erro:
-        st.warning(f"Não foi possível carregar os indicadores do Supabase: {erro}")
-        return [], "erro"
+    return url, key, headers
+
+
+def normalizar_resultado(item):
+    acertou = item.get("acertou")
+    if isinstance(acertou, str):
+        acertou = acertou.strip().lower() in {"true", "1", "sim", "s", "yes", "y"}
+
+    if acertou is None:
+        percentual = item.get("percentual")
+        percentual = float(percentual) if percentual not in (None, "") else None
+    elif acertou:
+        percentual = float(item.get("percentual", 100) or 100)
+    else:
+        percentual = float(item.get("percentual", 0) or 0)
+
+    return {
+        "id": item.get("id"),
+        "created_at": item.get("created_at"),
+        "user_id": item.get("user_id"),
+        "user_email": item.get("user_email"),
+        "acertou": acertou,
+        "percentual": percentual,
+        "marcada_para_revisao": bool(item.get("marcada_para_revisao", False)),
+        "disciplina": item.get("disciplina"),
+        "assunto": item.get("assunto"),
+        "banca": item.get("banca"),
+        "prova": item.get("prova"),
+        "tipo_questao": item.get("tipo_questao"),
+        "codigo": item.get("codigo"),
+        "resposta": item.get("resposta"),
+        "alternativa_certa": item.get("alternativa_certa"),
+        "tipo_simulado": item.get("tipo_simulado"),
+    }
+
+
+def carregar_resultados():
+    url, _, headers = obter_headers()
+
+    if not (url and headers):
+        return [], "sem_config"
+
+    for tabela in [TABELA_QUESTOES, TABELA_SIMULADO]:
+        try:
+            resposta = requests.get(
+                f"{url}/rest/v1/{tabela}",
+                headers=headers,
+                params={
+                    "select": "*",
+                    "order": "created_at.desc",
+                },
+                timeout=15,
+            )
+            resposta.raise_for_status()
+            dados = resposta.json()
+            if dados:
+                return [normalizar_resultado(item) for item in dados], tabela
+        except Exception as erro:
+            st.warning(f"Não foi possível carregar os indicadores do Supabase em {tabela}: {erro}")
+
+    return [], "sem_dados"
+
+
+def deletar_todos_resultados():
+    url, _, headers = obter_headers()
+
+    if not (url and headers):
+        return {"total": 0, "tabelas": {}, "erro": "sem_config"}
+
+    detalhes = {}
+    total = 0
+
+    for tabela in [TABELA_QUESTOES, TABELA_SIMULADO]:
+        try:
+            resposta = requests.get(
+                f"{url}/rest/v1/{tabela}",
+                headers=headers,
+                params={"select": "id"},
+                timeout=15,
+            )
+            resposta.raise_for_status()
+            ids = [item["id"] for item in resposta.json() if item.get("id") is not None]
+
+            for identificador in ids:
+                delete_resposta = requests.delete(
+                    f"{url}/rest/v1/{tabela}",
+                    headers=headers,
+                    params={"id": f"eq.{identificador}"},
+                    timeout=15,
+                )
+                delete_resposta.raise_for_status()
+
+            detalhes[tabela] = len(ids)
+            total += len(ids)
+        except Exception as erro:
+            detalhes[tabela] = f"erro: {erro}"
+
+    return {"total": total, "tabelas": detalhes}
 
 
 def render():
@@ -75,9 +139,23 @@ def render():
             if item.get("user_email") == usuario_atual or item.get("user_id") == usuario_atual
         ]
 
+    with st.expander("Limpar dados de resultados", expanded=False):
+        st.warning(
+            "Esta ação remove todos os registros das tabelas fs_questoes_resultados e fs_simulado_resultados."
+        )
+        if st.button("Excluir todos os registros", type="secondary"):
+            resultado_limpeza = deletar_todos_resultados()
+            if resultado_limpeza.get("erro") == "sem_config":
+                st.error("Configure o Supabase para limpar os dados automaticamente.")
+            else:
+                st.success(
+                    f"Registros removidos: {resultado_limpeza.get('total', 0)}."
+                )
+                st.rerun()
+
     if not resultados:
         st.info("Ainda não há dados de desempenho para este usuário.")
-        if origem != "supabase":
+        if origem != "sem_config":
             st.caption("Finalize alguns simulados para gerar métricas e visualizar seu progresso aqui.")
         return
 
@@ -89,19 +167,21 @@ def render():
         st.info("Ainda não há dados de desempenho para este usuário.")
         return
 
-    total_simulados = len(df)
-    media_percentual = round(df["percentual"].mean(), 1) if not df.empty else 0
-    melhor_resultado = round(df["percentual"].max(), 1) if not df.empty else 0
-    ultimo_resultado = round(df["percentual"].iloc[-1], 1) if not df.empty else 0
+    percentuais_validos = df["percentual"].dropna()
+    total_questoes = len(df)
+    acertos = int(df["acertou"].fillna(False).sum()) if "acertou" in df.columns else 0
+    media_percentual = round(percentuais_validos.mean(), 1) if not percentuais_validos.empty else 0
+    melhor_resultado = round(percentuais_validos.max(), 1) if not percentuais_validos.empty else 0
+    ultimo_resultado = round(percentuais_validos.iloc[-1], 1) if not percentuais_validos.empty else 0
 
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.metric("Simulados realizados", total_simulados)
+        st.metric("Questões respondidas", total_questoes)
     with col2:
-        st.metric("Média de acerto", f"{media_percentual:.1f}%")
+        st.metric("Acertos", acertos)
     with col3:
-        st.metric("Melhor resultado", f"{melhor_resultado:.1f}%")
+        st.metric("Taxa de acerto", f"{media_percentual:.1f}%")
     with col4:
         st.metric("Último resultado", f"{ultimo_resultado:.1f}%")
 
@@ -170,16 +250,18 @@ def render():
 
     st.divider()
 
-    st.markdown("### Últimos simulados")
+    st.markdown("### Últimas questões respondidas")
     tabela = df[[
         "created_at",
-        "acertos",
-        "total_questoes",
-        "percentual",
+        "codigo",
         "disciplina",
         "assunto",
         "banca",
         "prova",
+        "acertou",
+        "percentual",
+        "resposta",
+        "marcada_para_revisao",
     ]].copy()
     tabela["created_at"] = tabela["created_at"].dt.strftime("%d/%m/%Y %H:%M")
-    st.dataframe(tabela.sort_values("created_at", ascending=False).head(10), use_container_width=True, hide_index=True)
+    st.dataframe(tabela.sort_values("created_at", ascending=False).head(20), use_container_width=True, hide_index=True)
