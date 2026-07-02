@@ -68,6 +68,9 @@ def carregar_resultados():
     if not (url and headers):
         return [], "sem_config"
 
+    resultados = []
+    origem = None
+
     for tabela in [TABELA_QUESTOES, TABELA_SIMULADO]:
         try:
             resposta = requests.get(
@@ -82,11 +85,15 @@ def carregar_resultados():
             resposta.raise_for_status()
             dados = resposta.json()
             if dados:
-                return [normalizar_resultado(item) for item in dados], tabela
+                resultados.extend(normalizar_resultado(item) for item in dados)
+                origem = tabela if origem is None else "ambas"
         except Exception as erro:
             st.warning(f"Não foi possível carregar os indicadores do Supabase em {tabela}: {erro}")
 
-    return [], "sem_dados"
+    if not resultados:
+        return [], origem or "sem_dados"
+
+    return resultados, origem
 
 
 def deletar_todos_resultados():
