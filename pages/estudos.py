@@ -55,7 +55,6 @@ def render_arvore(esquerda, estrutura):
             label = f"{indent}{caret} {name}"
             if esquerda.button(label, key=key_btn):
                 toggle_expanded(path)
-                st.rerun()
 
             if is_expanded(path):
                 # render children
@@ -67,16 +66,14 @@ def render_arvore(esquerda, estrutura):
             key_btn = f"node-{path}"
             caret = "▾" if is_expanded(path) else "▸" if isinstance(data, dict) else ""
             label = f"{indent}{caret} {name}"
-            if esquerda.button(label, key=key_btn):
-                # if has aulas
-                aulas = data.get("Aulas") if isinstance(data, dict) else None
-                if aulas:
-                    toggle_expanded(path)
-                    st.rerun()
-                else:
-                    # leaf without aulas (unlikely) — select
-                    st.session_state.estudo_selecionado = {"tipo": "node", "titulo": name}
-                    st.rerun()
+                if esquerda.button(label, key=key_btn):
+                    # if has aulas
+                    aulas = data.get("Aulas") if isinstance(data, dict) else None
+                    if aulas:
+                        toggle_expanded(path)
+                    else:
+                        # leaf without aulas (unlikely) — select
+                        st.session_state.estudo_selecionado = {"tipo": "node", "titulo": name}
 
             if isinstance(data, dict) and is_expanded(path):
                 # render Aulas
@@ -95,7 +92,6 @@ def render_arvore(esquerda, estrutura):
                             }
                         else:
                             st.session_state.estudo_selecionado = {"tipo": "aula", "titulo": title, "path": path}
-                        st.rerun()
 
                 pdf = data.get("PDF")
                 if pdf:
@@ -103,7 +99,6 @@ def render_arvore(esquerda, estrutura):
                     label_pdf = f"{indent}\u00A0\u00A0📄 PDF"
                     if esquerda.button(label_pdf, key=key_pdf):
                         st.session_state.estudo_selecionado = {"tipo": "pdf", "url": pdf, "path": path}
-                        st.rerun()
 
     # Render top-level nodes
     for top_name, top_data in estrutura.items():
