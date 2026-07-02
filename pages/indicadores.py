@@ -220,7 +220,7 @@ def render():
         evolucao = df[["created_at", "percentual"]].dropna()
         if not evolucao.empty:
             st.markdown("### Evolução ao longo do tempo")
-            st.line_chart(evolucao.set_index("created_at")["percentual"], width='stretch)
+            st.line_chart(evolucao.set_index("created_at")["percentual"], width='stretch')
     elif view == "Disciplina":
         if "disciplina" in df.columns:
             disciplinas = sorted([valor for valor in df["disciplina"].dropna().astype(str).unique() if valor])
