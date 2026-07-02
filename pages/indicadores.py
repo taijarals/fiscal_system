@@ -241,7 +241,7 @@ def render():
                 st.markdown(f"### Desempenho por disciplina{f' - {disciplina_selecionada}' if disciplina_selecionada != 'Todas' else ''}")
                 st.bar_chart(
                     desempenho_por_disciplina.set_index("disciplina")["percentual"],
-                    width='stretch,
+                    width='stretch',
                 )
             else:
                 st.info("Não há dados suficientes para agrupar por disciplina.")
@@ -286,4 +286,4 @@ def render():
         "marcada_para_revisao",
     ]].copy()
     tabela["created_at"] = tabela["created_at"].dt.strftime("%d/%m/%Y %H:%M")
-    st.dataframe(tabela.sort_values("created_at", ascending=False).head(20), width='stretch, hide_index=True)
+    st.dataframe(tabela.sort_values("created_at", ascending=False).head(20), width='stretch', hide_index=True)
