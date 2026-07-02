@@ -6,6 +6,7 @@ import streamlit as st
 from pages.indicadores import render as render_indicadores
 from pages.questoes import obter_config_supabase, render as render_questoes
 from pages.simulado import render as render_simulados
+from pages.estudos import render as render_estudos
 
 
 # ======================================================
@@ -156,7 +157,7 @@ if st.session_state.authenticated:
 # ======================================================
 
 if st.session_state.authenticated:
-    col1, col2, col3, col4 = st.columns([2.5, 2.5, 2.5, 1.5])
+    col1, col2, col3, col4, col5 = st.columns([2.2, 2.2, 2.2, 2.2, 1.2])
 
     with col1:
         if st.button(
@@ -176,14 +177,23 @@ if st.session_state.authenticated:
 
     with col3:
         if st.button(
+            "Estudos",
+            width='stretch',
+            type="primary" if st.session_state.page == "Estudos" else "secondary"
+        ):
+            st.session_state.page = "Estudos"
+
+    with col4:
+        if st.button(
             "Indicadores",
             width='stretch',
             type="primary" if st.session_state.page == "Indicadores" else "secondary"
         ):
             st.session_state.page = "Indicadores"
 
-    with col4:
-        if st.button("Sair", width='stretch', type="secondary"):
+    with col5:
+        # Botão de logout apenas com ícone
+        if st.button("⎋", width='stretch', type="secondary"):
             st.session_state.authenticated = False
             st.session_state.username = ""
             st.session_state.page = "Questões"
@@ -200,6 +210,9 @@ if st.session_state.authenticated:
 
     elif st.session_state.page == "Simulados":
         render_simulados()
+
+    elif st.session_state.page == "Estudos":
+        render_estudos()
 
     elif st.session_state.page == "Indicadores":
         render_indicadores()
