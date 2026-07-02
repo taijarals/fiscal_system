@@ -90,8 +90,10 @@ def render_arvore(esquerda, estrutura):
                                 "url": aula.get("url"),
                                 "path": path,
                             }
+                            st.rerun()
                         else:
                             st.session_state.estudo_selecionado = {"tipo": "aula", "titulo": title, "path": path}
+                            st.rerun()
 
                 pdf = data.get("PDF")
                 if pdf:
@@ -99,6 +101,7 @@ def render_arvore(esquerda, estrutura):
                     label_pdf = f"{indent}\u00A0\u00A0📄 PDF"
                     if esquerda.button(label_pdf, key=key_pdf):
                         st.session_state.estudo_selecionado = {"tipo": "pdf", "url": pdf, "path": path}
+                        st.rerun()
 
     # Render top-level nodes
     for top_name, top_data in estrutura.items():
