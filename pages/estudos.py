@@ -1,4 +1,3 @@
-import base64
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -17,8 +16,6 @@ def criar_estrutura_exemplo():
 
 
 def render_arvore(esquerda, estrutura):
-    selecionado = None
-
     for ciclo, metas in estrutura.items():
         with esquerda.expander(ciclo, expanded=True):
             for meta, disciplinas in metas.items():
@@ -26,19 +23,32 @@ def render_arvore(esquerda, estrutura):
                     for disciplina, conteudo in disciplinas.items():
                         with esquerda.expander(disciplina, expanded=False):
                             aulas = conteudo.get("Aulas", [])
-                            if aulas:
-                                for i, aula in enumerate(aulas, start=1):
-                                    key = f"{ciclo}-{meta}-{disciplina}-aula-{i}"
-                                    if esquerda.button(aula, key=key):
-                                        selecionado = {"tipo": "aula", "titulo": aula, "disciplina": disciplina}
+                            for i, aula in enumerate(aulas, start=1):
+                                key = f"{ciclo}-{meta}-{disciplina}-aula-{i}"
+                                if esquerda.button(aula, key=key):
+                                    st.session_state.estudo_selecionado = {
+                                        "tipo": "aula",
+                                        "titulo": aula,
+                                        "disciplina": disciplina,
+                                        "ciclo": ciclo,
+                                        "meta": meta,
+                                    }
+                                    st.experimental_rerun()
 
                             pdf = conteudo.get("PDF")
                             if pdf:
                                 key_pdf = f"{ciclo}-{meta}-{disciplina}-pdf"
                                 if esquerda.button("Abrir PDF", key=key_pdf):
-                                    selecionado = {"tipo": "pdf", "url": pdf, "disciplina": disciplina}
+                                    st.session_state.estudo_selecionado = {
+                                        "tipo": "pdf",
+                                        "url": pdf,
+                                        "disciplina": disciplina,
+                                        "ciclo": ciclo,
+                                        "meta": meta,
+                                    }
+                                    st.experimental_rerun()
 
-    return selecionado
+    return st.session_state.get("estudo_selecionado")
 
 
 def mostrar_pdf_url(url):
@@ -60,12 +70,14 @@ def render():
     with esquerda:
         st.header("Conteúdo")
         st.caption("Selecione Ciclo → Meta → Disciplina → Aula/PDF")
-        selecionado = render_arvore(esquerda, estrutura)
+        render_arvore(esquerda, estrutura)
 
         st.divider()
         st.write("\n")
 
     with direita:
+        selecionado = st.session_state.get("estudo_selecionado")
+
         if selecionado:
             if selecionado["tipo"] == "aula":
                 st.subheader(selecionado["titulo"])
