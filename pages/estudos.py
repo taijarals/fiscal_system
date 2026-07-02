@@ -6,9 +6,16 @@ def criar_estrutura_exemplo():
     return {
         "Ciclos 1": {
             "Meta 1": {
-                "ICMS / Crédito Fiscal": {
-                    "Aulas": ["Aula 1: Introdução", "Aula 2: Conceitos", "Aula 3: Exemplos"],
-                    "PDF": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                "Direito - Tributário": {
+                    "Aulas": [
+                        {
+                            "titulo": "Introdução ao Direito Tributário 01 a 08",
+                            "url": "https://videoaulas.infra.grancursosonline.com.br/564afe295161b94c3dcc76ab8ec071b3/d414bb4a431beb9bf948835085c9340b/d414bb4a431beb9bf948835085c9340b-p480.mp4?Expires=1783109998&Signature=TmjkInm6iFIHqHbfIBIM5IlVPWyGlLuDr4dOzDr3rIIXoEDqRUbzKrAmLResO-QajDSdohqYe4TJ9pAukUcBxd~WXS7s1Stbc5-nZPPMcsDqySkI5DqK3~i3w3OT~UWYjNZEMrDxNYR0HqFwloak22cAxWDjX8kJI9RQpHZAwWxSG8kqfDxaUXQxcVDCM66qlWfFhDYzVC~qvzupQDgbLcPy7YmDq93tLxxtey-4Am-PMcym9WlaSFF5EhAdSV6TKvrFiVZDkBzk8V2SjZTb-Q4-1en4hl9lAzkZYQ4n5o6tz-0g-DBHle5ubJwaW9RZNjisdU1ONkvQxRyHl6dAcQ__&Key-Pair-Id=APKAJWDRH5QWMLF2KNSA"
+                        }
+                    ],
+                    "PDF": None,
+                    "Questoes": [],
+                    "Tipo": "Vídeo",
                 }
             }
         }
@@ -24,15 +31,26 @@ def render_arvore(esquerda, estrutura):
                         with esquerda.expander(disciplina, expanded=False):
                             aulas = conteudo.get("Aulas", [])
                             for i, aula in enumerate(aulas, start=1):
+                                title = aula["titulo"] if isinstance(aula, dict) else str(aula)
                                 key = f"{ciclo}-{meta}-{disciplina}-aula-{i}"
-                                if esquerda.button(aula, key=key):
-                                    st.session_state.estudo_selecionado = {
-                                        "tipo": "aula",
-                                        "titulo": aula,
-                                        "disciplina": disciplina,
-                                        "ciclo": ciclo,
-                                        "meta": meta,
-                                    }
+                                if esquerda.button(title, key=key):
+                                    if isinstance(aula, dict) and aula.get("url"):
+                                        st.session_state.estudo_selecionado = {
+                                            "tipo": "video",
+                                            "titulo": title,
+                                            "url": aula.get("url"),
+                                            "disciplina": disciplina,
+                                            "ciclo": ciclo,
+                                            "meta": meta,
+                                        }
+                                    else:
+                                        st.session_state.estudo_selecionado = {
+                                            "tipo": "aula",
+                                            "titulo": title,
+                                            "disciplina": disciplina,
+                                            "ciclo": ciclo,
+                                            "meta": meta,
+                                        }
                                     st.experimental_rerun()
 
                             pdf = conteudo.get("PDF")
@@ -82,6 +100,12 @@ def render():
             if selecionado["tipo"] == "aula":
                 st.subheader(selecionado["titulo"])
                 st.markdown("Conteúdo da aula — insira material, vídeo ou notas aqui.")
+            elif selecionado["tipo"] == "video":
+                st.subheader(selecionado["titulo"])
+                try:
+                    st.video(selecionado["url"], start_time=0)
+                except Exception:
+                    st.error("Não foi possível reproduzir o vídeo. Verifique a URL.")
             elif selecionado["tipo"] == "pdf":
                 st.subheader(f"PDF — {selecionado.get('disciplina')}")
                 mostrar_pdf_url(selecionado["url"])
