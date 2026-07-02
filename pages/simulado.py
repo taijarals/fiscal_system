@@ -11,6 +11,7 @@ from pages.questoes import (
     opcoes_filtro,
     aplicar_filtros,
     normalizar_questao,
+    opcoes_filtro_dependente,
 )
 
 
@@ -260,50 +261,126 @@ def render_selecao_simulado():
             st.rerun()
     
     col1, col2 = st.columns(2)
-    
+
+    filtro_disciplina = st.session_state.simulado_filtro_disciplina
+    filtro_assunto = st.session_state.simulado_filtro_assunto
+    filtro_banca = st.session_state.simulado_filtro_banca
+    filtro_ano = st.session_state.simulado_filtro_ano
+    filtro_prova = st.session_state.simulado_filtro_prova
+
     with col1:
-        opcoes_disciplina = [opt for opt in opcoes_filtro(df, "disciplina", "") if opt]
+        opcoes_disciplina = [
+            opt for opt in opcoes_filtro_dependente(
+                df,
+                "disciplina",
+                "",
+                filtro_disciplina,
+                filtro_assunto,
+                filtro_ano,
+                filtro_banca,
+                filtro_prova,
+                [],
+                "",
+            )
+            if opt
+        ]
         disciplina = st.multiselect(
             "Filtrar por disciplina",
             opcoes_disciplina,
-            default=st.session_state.simulado_filtro_disciplina,
+            default=filtro_disciplina,
             key="select_disciplina"
         )
         st.session_state.simulado_filtro_disciplina = disciplina
-        
-        opcoes_banca = [opt for opt in opcoes_filtro(df, "banca", "") if opt]
+
+        opcoes_banca = [
+            opt for opt in opcoes_filtro_dependente(
+                df,
+                "banca",
+                "",
+                disciplina,
+                filtro_assunto,
+                filtro_ano,
+                filtro_banca,
+                filtro_prova,
+                [],
+                "",
+            )
+            if opt
+        ]
         banca = st.multiselect(
             "Filtrar por banca",
             opcoes_banca,
-            default=st.session_state.simulado_filtro_banca,
+            default=filtro_banca,
             key="select_banca"
         )
         st.session_state.simulado_filtro_banca = banca
-        
-        opcoes_ano = [opt for opt in opcoes_filtro(df, "ano", "") if opt]
+
+        opcoes_ano = [
+            opt for opt in opcoes_filtro_dependente(
+                df,
+                "ano",
+                "",
+                disciplina,
+                filtro_assunto,
+                filtro_ano,
+                banca,
+                filtro_prova,
+                [],
+                "",
+            )
+            if opt
+        ]
         ano = st.multiselect(
             "Filtrar por ano",
             opcoes_ano,
-            default=st.session_state.simulado_filtro_ano,
+            default=filtro_ano,
             key="select_ano"
         )
         st.session_state.simulado_filtro_ano = ano
-    
+
     with col2:
-        opcoes_assunto = [opt for opt in opcoes_filtro(df, "assunto", "") if opt]
+        opcoes_assunto = [
+            opt for opt in opcoes_filtro_dependente(
+                df,
+                "assunto",
+                "",
+                disciplina,
+                filtro_assunto,
+                filtro_ano,
+                banca,
+                filtro_prova,
+                [],
+                "",
+            )
+            if opt
+        ]
         assunto = st.multiselect(
             "Filtrar por assunto",
             opcoes_assunto,
-            default=st.session_state.simulado_filtro_assunto,
+            default=filtro_assunto,
             key="select_assunto"
         )
         st.session_state.simulado_filtro_assunto = assunto
-        
-        opcoes_prova = [opt for opt in opcoes_filtro(df, "prova", "") if opt]
+
+        opcoes_prova = [
+            opt for opt in opcoes_filtro_dependente(
+                df,
+                "prova",
+                "",
+                disciplina,
+                assunto,
+                filtro_ano,
+                banca,
+                filtro_prova,
+                [],
+                "",
+            )
+            if opt
+        ]
         prova = st.multiselect(
             "Filtrar por prova",
             opcoes_prova,
-            default=st.session_state.simulado_filtro_prova,
+            default=filtro_prova,
             key="select_prova"
         )
         st.session_state.simulado_filtro_prova = prova

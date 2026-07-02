@@ -213,6 +213,32 @@ def opcoes_filtro(df, coluna, opcao_padrao):
     return [opcao_padrao] + opcoes
 
 
+def opcoes_filtro_dependente(df, coluna, opcao_padrao, disciplina, assunto, ano, banca, prova, tipo_questao, pesquisa):
+    if df.empty or coluna not in df.columns:
+        return [opcao_padrao]
+
+    filtro_disciplina = disciplina if coluna != "disciplina" else "Todas"
+    filtro_assunto = assunto if coluna != "assunto" else "Todos"
+    filtro_ano = ano if coluna != "ano" else "Todos"
+    filtro_banca = banca if coluna != "banca" else "Todas"
+    filtro_prova = prova if coluna != "prova" else "Todas"
+    filtro_tipo_questao = tipo_questao if coluna != "tipo_questao" else "Todos"
+
+    df_filtrado = aplicar_filtros(
+        df,
+        filtro_disciplina,
+        filtro_assunto,
+        filtro_ano,
+        filtro_banca,
+        filtro_prova,
+        filtro_tipo_questao,
+        pesquisa,
+    )
+
+    opcoes = sorted(df_filtrado[coluna].dropna().astype(str).unique())
+    return [opcao_padrao] + opcoes
+
+
 def aplicar_filtros(df, disciplina, assunto, ano, banca, prova, tipo_questao, pesquisa):
     df_filtrado = df.copy()
 
@@ -538,19 +564,117 @@ def render():
     # FILTROS
     # ==================================================
 
+    filtro_disciplina = st.session_state.get("filtro_disciplina", "Todas")
+    filtro_banca = st.session_state.get("filtro_banca", "Todas")
+    filtro_assunto = st.session_state.get("filtro_assunto", "Todos")
+    filtro_prova = st.session_state.get("filtro_prova", "Todas")
+    filtro_ano = st.session_state.get("filtro_ano", "Todos")
+    filtro_tipo = st.session_state.get("filtro_tipo", "Todos")
+    filtro_pesquisa = st.session_state.get("filtro_pesquisa", "")
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        disciplina = st.selectbox("Disciplina", opcoes_filtro(df, "disciplina", "Todas"), key="filtro_disciplina")
-        banca = st.selectbox("Banca", opcoes_filtro(df, "banca", "Todas"), key="filtro_banca")
+        disciplina = st.selectbox(
+            "Disciplina",
+            opcoes_filtro_dependente(
+                df,
+                "disciplina",
+                "Todas",
+                filtro_disciplina,
+                filtro_assunto,
+                filtro_ano,
+                filtro_banca,
+                filtro_prova,
+                filtro_tipo,
+                filtro_pesquisa,
+            ),
+            key="filtro_disciplina",
+        )
+        banca = st.selectbox(
+            "Banca",
+            opcoes_filtro_dependente(
+                df,
+                "banca",
+                "Todas",
+                disciplina,
+                filtro_assunto,
+                filtro_ano,
+                filtro_banca,
+                filtro_prova,
+                filtro_tipo,
+                filtro_pesquisa,
+            ),
+            key="filtro_banca",
+        )
 
     with col2:
-        assunto = st.selectbox("Assunto", opcoes_filtro(df, "assunto", "Todos"), key="filtro_assunto")
-        prova = st.selectbox("Prova", opcoes_filtro(df, "prova", "Todas"), key="filtro_prova")
+        assunto = st.selectbox(
+            "Assunto",
+            opcoes_filtro_dependente(
+                df,
+                "assunto",
+                "Todos",
+                disciplina,
+                filtro_assunto,
+                filtro_ano,
+                banca,
+                filtro_prova,
+                filtro_tipo,
+                filtro_pesquisa,
+            ),
+            key="filtro_assunto",
+        )
+        prova = st.selectbox(
+            "Prova",
+            opcoes_filtro_dependente(
+                df,
+                "prova",
+                "Todas",
+                disciplina,
+                assunto,
+                filtro_ano,
+                banca,
+                filtro_prova,
+                filtro_tipo,
+                filtro_pesquisa,
+            ),
+            key="filtro_prova",
+        )
 
     with col3:
-        ano = st.selectbox("Ano", opcoes_filtro(df, "ano", "Todos"), key="filtro_ano")
-        tipo_questao = st.selectbox("Tipo", ["Todos"] + TIPOS_QUESTAO, key="filtro_tipo")
+        ano = st.selectbox(
+            "Ano",
+            opcoes_filtro_dependente(
+                df,
+                "ano",
+                "Todos",
+                disciplina,
+                assunto,
+                filtro_ano,
+                banca,
+                prova,
+                filtro_tipo,
+                filtro_pesquisa,
+            ),
+            key="filtro_ano",
+        )
+        tipo_questao = st.selectbox(
+            "Tipo",
+            opcoes_filtro_dependente(
+                df,
+                "tipo_questao",
+                "Todos",
+                disciplina,
+                assunto,
+                ano,
+                banca,
+                prova,
+                filtro_tipo,
+                filtro_pesquisa,
+            ),
+            key="filtro_tipo",
+        )
 
     col_pesquisa, col_limpar = st.columns([3, 1])
 
