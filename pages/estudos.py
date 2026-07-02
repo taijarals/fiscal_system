@@ -13,15 +13,21 @@ def criar_estrutura_exemplo():
         "Ciclo 1": {
             "Meta 1": {
                 "Direito Tributário": {
-                    "Aulas": [
-                        {
-                            "titulo": "Aula 1: Introdução ao Direito Tributário 01 a 08",
-                            "url": "https://videoaulas.infra.grancursosonline.com.br/564afe295161b94c3dcc76ab8ec071b3/d414bb4a431beb9bf948835085c9340b/d414bb4a431beb9bf948835085c9340b-p480.mp4?Expires=1783109998&Signature=TmjkInm6iFIHqHbfIBIM5IlVPWyGlLuDr4dOzDr3rIIXoEDqRUbzKrAmLResO-QajDSdohqYe4TJ9pAukUcBxd~WXS7s1Stbc5-nZPPMcsDqySkI5DqK3~i3w3OT~UWYjNZEMrDxNYR0HqFwloak22cAxWDjX8kJI9RQpHZAwWxSG8kqfDxaUXQxcVDCM66qlWfFhDYzVC~qvzupQDgbLcPy7YmDq93tLxxtey-4Am-PMcym9WlaSFF5EhAdSV6TKvrFiVZDkBzk8V2SjZTb-Q4-1en4hl9lAzkZYQ4n5o6tz-0g-DBHle5ubJwaW9RZNjisdU1ONkvQxRyHl6dAcQ__&Key-Pair-Id=APKAJWDRH5QWMLF2KNSA"
-                        }
-                    ],
-                    "PDF": None,
-                    "Questoes": [],
-                    "Tipo": "Vídeo",
+                    "Introdução ao Direito Tributário": {
+                        "Aulas": [
+                            {"titulo": "Aula 1", "url": "https://videoaulas.infra.grancursosonline.com.br/564afe295161b94c3dcc76ab8ec071b3/d414bb4a431beb9bf948835085c9340b/d414bb4a431beb9bf948835085c9340b-p480.mp4?Expires=1783109998&Signature=TmjkInm6iFIHqHbfIBIM5IlVPWyGlLuDr4dOzDr3rIIXoEDqRUbzKrAmLResO-QajDSdohqYe4TJ9pAukUcBxd~WXS7s1Stbc5-nZPPMcsDqySkI5DqK3~i3w3OT~UWYjNZEMrDxNYR0HqFwloak22cAxWDjX8kJI9RQpHZAwWxSG8kqfDxaUXQxcVDCM66qlWfFhDYzVC~qvzupQDgbLcPy7YmDq93tLxxtey-4Am-PMcym9WlaSFF5EhAdSV6TKvrFiVZDkBzk8V2SjZTb-Q4-1en4hl9lAzkZYQ4n5o6tz-0g-DBHle5ubJwaW9RZNjisdU1ONkvQxRyHl6dAcQ__&Key-Pair-Id=APKAJWDRH5QWMLF2KNSA"},
+                            {"titulo": "Aula 2"},
+                            {"titulo": "Aula 3"},
+                            {"titulo": "Aula 4"},
+                            {"titulo": "Aula 5"},
+                            {"titulo": "Aula 6"},
+                            {"titulo": "Aula 7"},
+                            {"titulo": "Aula 8"},
+                        ],
+                        "PDF": None,
+                        "Questoes": [],
+                        "Tipo": "Vídeo",
+                    }
                 }
             }
         }
