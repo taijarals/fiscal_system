@@ -137,7 +137,7 @@ def montar_payload_resultado():
     }
 
 
-def montar_payload_questoes_resultado():
+def montar_payload_questoes_resultado(resultado_id):
     """Prepara os registros individuais para a tabela fs_questoes_resultados."""
     respostas = st.session_state.simulado_respostas
     questoes = st.session_state.simulado_questoes
@@ -149,25 +149,26 @@ def montar_payload_questoes_resultado():
     for indice, questao in enumerate(questoes):
         resposta = respostas[indice].get("resposta", "")
         marcada_para_revisao = respostas[indice].get("marcada_para_revisao", False)
-        acertou = None
+        acertou = False
 
         if questao.get("tipo_questao") == "Múltipla escolha":
             acertou = resposta == questao.get("alternativa_certa")
 
         registros.append({
+            "resultado_id": resultado_id,
             "user_id": auth_user.get("id") or username,
-            "user_email": auth_user.get("email") or username,
-            "codigo": questao.get("codigo"),
+            "codigo_questao": str(questao.get("codigo") or ""),
+            "correta": bool(acertou),
+            "respondeu": bool(resposta != ""),
+            "marcada_revisao": marcada_para_revisao,
+            "resposta_usuario": resposta or None,
+            "resposta_correta": questao.get("alternativa_certa"),
             "disciplina": questao.get("disciplina"),
             "assunto": questao.get("assunto"),
             "banca": questao.get("banca"),
             "prova": questao.get("prova"),
-            "tipo_questao": questao.get("tipo_questao"),
-            "alternativa_certa": questao.get("alternativa_certa"),
-            "resposta": resposta,
-            "percentual": 100 if acertou is True else 0 if acertou is False else None,
-            "marcada_para_revisao": marcada_para_revisao,
-            "tipo_simulado": "simulado",
+            "ano": questao.get("ano"),
+            "dificuldade": questao.get("dificuldade"),
         })
 
     return registros
@@ -199,49 +200,6 @@ def salvar_resultado_simulado():
 
     resposta_questoes = None
     try:
-        resposta_questoes = requests.post(
-            f"{url}/rest/v1/fs_questoes_resultados",
-            headers=headers,
-            json=payload_questoes,
-            timeout=15,
-        )
-        resposta_questoes.raise_for_status()
-    except Exception as erro:
-        if isinstance(erro, requests.HTTPError) and resposta_questoes is not None:
-            status_code = resposta_questoes.status_code
-            detalhes = resposta_questoes.text
-        else:
-            status_code = None
-            detalhes = str(erro)
-
-        if isinstance(payload_questoes, list) and payload_questoes:
-            for indice, item in enumerate(payload_questoes):
-                resposta_item = None
-                try:
-                    resposta_item = requests.post(
-                        f"{url}/rest/v1/fs_questoes_resultados",
-                        headers=headers,
-                        json=item,
-                        timeout=15,
-                    )
-                    resposta_item.raise_for_status()
-                except Exception as erro_item:
-                    erro_texto = str(erro_item)
-                    if isinstance(erro_item, requests.HTTPError) and resposta_item is not None:
-                        erro_texto = f"{resposta_item.status_code} {resposta_item.text}"
-                    return {
-                        "salvo": False,
-                        "erro": f"Falha na inserção de questao #{indice + 1}: {erro_texto}",
-                        "sem_config": False,
-                    }
-        else:
-            return {
-                "salvo": False,
-                "erro": f"Falha ao inserir registros em fs_questoes_resultados: {status_code or ''} {detalhes}",
-                "sem_config": False,
-            }
-
-    try:
         resposta_simulado = requests.post(
             f"{url}/rest/v1/fs_simulado_resultados",
             headers=headers,
@@ -249,13 +207,39 @@ def salvar_resultado_simulado():
             timeout=15,
         )
         resposta_simulado.raise_for_status()
-        st.session_state.simulado_resultado_salvo = True
-        return {"salvo": True, "erro": None, "sem_config": False}
+        dados_simulado = resposta_simulado.json()
+        if isinstance(dados_simulado, list) and dados_simulado:
+            resultado_id = dados_simulado[0].get("id")
+        elif isinstance(dados_simulado, dict):
+            resultado_id = dados_simulado.get("id")
+        else:
+            resultado_id = None
+
+        if resultado_id is None:
+            return {"salvo": False, "erro": "Não foi possível obter o id do resultado simulado salvo.", "sem_config": False}
+
+        payload_questoes = montar_payload_questoes_resultado(resultado_id)
     except Exception as erro:
         erro_texto = str(erro)
         if isinstance(erro, requests.HTTPError) and resposta_simulado is not None:
             erro_texto = f"{resposta_simulado.status_code} {resposta_simulado.text}"
         return {"salvo": False, "erro": f"Falha ao inserir registro em fs_simulado_resultados: {erro_texto}", "sem_config": False}
+
+    try:
+        resposta_questoes = requests.post(
+            f"{url}/rest/v1/fs_questoes_resultados",
+            headers=headers,
+            json=payload_questoes,
+            timeout=15,
+        )
+        resposta_questoes.raise_for_status()
+        st.session_state.simulado_resultado_salvo = True
+        return {"salvo": True, "erro": None, "sem_config": False}
+    except Exception as erro:
+        erro_texto = str(erro)
+        if isinstance(erro, requests.HTTPError) and resposta_questoes is not None:
+            erro_texto = f"{resposta_questoes.status_code} {resposta_questoes.text}"
+        return {"salvo": False, "erro": f"Falha ao inserir registros em fs_questoes_resultados: {erro_texto}", "sem_config": False}
 
 
 def render_selecao_simulado():
