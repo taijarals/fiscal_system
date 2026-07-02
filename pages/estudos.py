@@ -213,7 +213,9 @@ def render():
                 st.subheader(selecionado["titulo"])
                 st.markdown("Conteúdo da aula — insira material, vídeo ou notas aqui.")
             elif selecionado["tipo"] == "video":
-                st.subheader(selecionado["titulo"])
+                # Mostrar título fixo com link da aula, conforme solicitado
+                st.markdown("## Fenômeno da Incidência Tributária e Fato Gerador")
+                st.markdown(f"[Abrir link da aula]({selecionado['url']})")
                 try:
                     st.video(selecionado["url"], start_time=0)
                 except Exception:
