@@ -1,6 +1,12 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
+# tentativas de import do componente 'streamlit-tree-select'
+try:
+    from streamlit_tree_select import tree_select as st_tree_select
+except Exception:
+    st_tree_select = None
+
 
 def criar_estrutura_exemplo():
     return {
@@ -119,7 +125,78 @@ def render():
     with esquerda:
         st.header("Conteúdo")
         st.caption("Selecione Ciclo → Meta → Disciplina → Aula/PDF")
-        render_arvore(esquerda, estrutura)
+        # Preferir usar streamlit-tree-select quando disponível
+        selecionado = None
+        if st_tree_select:
+            # Construir nodes no formato esperado pelo componente
+            def construir_nodos(obj, path=""):
+                nodos = []
+                for nome, valor in obj.items():
+                    novo_path = f"{path}/{nome}".lstrip("/")
+                    nodo = {"label": nome, "value": novo_path}
+                    # Se o valor for dict e contém chaves de conteúdo
+                    if isinstance(valor, dict):
+                        # Se tem 'Aulas', transformar cada aula em child
+                        if "Aulas" in valor:
+                            children = []
+                            for i, aula in enumerate(valor.get("Aulas", []), start=1):
+                                titulo = aula.get("titulo") if isinstance(aula, dict) else str(aula)
+                                aula_path = f"{novo_path}/Aula {i}"
+                                child = {"label": titulo, "value": aula_path}
+                                # guardar URL no map para reprodução
+                                if isinstance(aula, dict) and aula.get("url"):
+                                    child["meta"] = {"url": aula.get("url"), "tipo": "video"}
+                                children.append(child)
+
+                            # PDF
+                            if valor.get("PDF"):
+                                pdf_path = f"{novo_path}/PDF"
+                                children.append({"label": "PDF", "value": pdf_path, "meta": {"url": valor.get("PDF"), "tipo": "pdf"}})
+
+                            nodo["children"] = children
+                        else:
+                            nodo["children"] = construir_nodos(valor, novo_path)
+                    nodos.append(nodo)
+                return nodos
+
+            tree_data = construir_nodos(estrutura)
+
+            # Mostrar componente e obter seleção
+            try:
+                selecionados = st_tree_select(tree_data, key="tree_select")
+            except Exception:
+                st.warning("Erro ao renderizar streamlit-tree-select; usando fallback.")
+                selecionados = None
+
+            # Mapear seleção para ação
+            if selecionados:
+                # selecionados geralmente é lista; pegar o último selecionado
+                sel = selecionados[-1] if isinstance(selecionados, (list, tuple)) else selecionados
+                # procurar meta nos nodes para achar url
+                def procurar_meta(nodes, value):
+                    for n in nodes:
+                        if n.get("value") == value:
+                            return n.get("meta")
+                        if "children" in n:
+                            res = procurar_meta(n["children"], value)
+                            if res:
+                                return res
+                    return None
+
+                meta = procurar_meta(tree_data, sel)
+                if meta:
+                    if meta.get("tipo") == "video":
+                        st.session_state.estudo_selecionado = {"tipo": "video", "titulo": sel.split("/")[-1], "url": meta.get("url")}
+                    elif meta.get("tipo") == "pdf":
+                        st.session_state.estudo_selecionado = {"tipo": "pdf", "url": meta.get("url")}
+        else:
+            selecionado = render_arvore(esquerda, estrutura)
+
+        # se usamos tree-select, render_arvore não foi chamada e estado pode ter sido setado
+        if not st_tree_select:
+            selecionado = selecionado
+        else:
+            selecionado = st.session_state.get("estudo_selecionado")
 
         st.divider()
         st.write("\n")
