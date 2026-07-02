@@ -66,14 +66,14 @@ def render_arvore(esquerda, estrutura):
             key_btn = f"node-{path}"
             caret = "▾" if is_expanded(path) else "▸" if isinstance(data, dict) else ""
             label = f"{indent}{caret} {name}"
-                if esquerda.button(label, key=key_btn):
-                    # if has aulas
-                    aulas = data.get("Aulas") if isinstance(data, dict) else None
-                    if aulas:
-                        toggle_expanded(path)
-                    else:
-                        # leaf without aulas (unlikely) — select
-                        st.session_state.estudo_selecionado = {"tipo": "node", "titulo": name}
+            if esquerda.button(label, key=key_btn):
+                # if has aulas
+                aulas = data.get("Aulas") if isinstance(data, dict) else None
+                if aulas:
+                    toggle_expanded(path)
+                else:
+                    # leaf without aulas (unlikely) — select
+                    st.session_state.estudo_selecionado = {"tipo": "node", "titulo": name}
 
             if isinstance(data, dict) and is_expanded(path):
                 # render Aulas
