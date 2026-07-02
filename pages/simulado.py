@@ -168,14 +168,6 @@ def montar_payload_questoes_resultado():
             "acertou": acertou,
             "percentual": 100 if acertou is True else 0 if acertou is False else None,
             "marcada_para_revisao": marcada_para_revisao,
-            "enunciado": questao.get("enunciado"),
-            "alternativa_a": questao.get("alternativa_a"),
-            "alternativa_b": questao.get("alternativa_b"),
-            "alternativa_c": questao.get("alternativa_c"),
-            "alternativa_d": questao.get("alternativa_d"),
-            "alternativa_e": questao.get("alternativa_e"),
-            "comentario_ia": questao.get("comentario_ia"),
-            "gabarito_aberta": questao.get("gabarito_aberta"),
             "tipo_simulado": "simulado",
         })
 
@@ -206,24 +198,65 @@ def salvar_resultado_simulado():
     else:
         headers["Authorization"] = f"Bearer {key}"
 
+    resposta_questoes = None
     try:
-        requests.post(
+        resposta_questoes = requests.post(
             f"{url}/rest/v1/fs_questoes_resultados",
             headers=headers,
             json=payload_questoes,
             timeout=15,
-        ).raise_for_status()
-        requests.post(
+        )
+        resposta_questoes.raise_for_status()
+    except Exception as erro:
+        if isinstance(erro, requests.HTTPError) and resposta_questoes is not None:
+            status_code = resposta_questoes.status_code
+            detalhes = resposta_questoes.text
+        else:
+            status_code = None
+            detalhes = str(erro)
+
+        if isinstance(payload_questoes, list) and payload_questoes:
+            for indice, item in enumerate(payload_questoes):
+                resposta_item = None
+                try:
+                    resposta_item = requests.post(
+                        f"{url}/rest/v1/fs_questoes_resultados",
+                        headers=headers,
+                        json=item,
+                        timeout=15,
+                    )
+                    resposta_item.raise_for_status()
+                except Exception as erro_item:
+                    erro_texto = str(erro_item)
+                    if isinstance(erro_item, requests.HTTPError) and resposta_item is not None:
+                        erro_texto = f"{resposta_item.status_code} {resposta_item.text}"
+                    return {
+                        "salvo": False,
+                        "erro": f"Falha na inserção de questao #{indice + 1}: {erro_texto}",
+                        "sem_config": False,
+                    }
+        else:
+            return {
+                "salvo": False,
+                "erro": f"Falha ao inserir registros em fs_questoes_resultados: {status_code or ''} {detalhes}",
+                "sem_config": False,
+            }
+
+    try:
+        resposta_simulado = requests.post(
             f"{url}/rest/v1/fs_simulado_resultados",
             headers=headers,
             json=payload,
             timeout=15,
-        ).raise_for_status()
+        )
+        resposta_simulado.raise_for_status()
         st.session_state.simulado_resultado_salvo = True
         return {"salvo": True, "erro": None, "sem_config": False}
     except Exception as erro:
-        st.session_state.simulado_resultado_salvo = False
-        return {"salvo": False, "erro": str(erro), "sem_config": False}
+        erro_texto = str(erro)
+        if isinstance(erro, requests.HTTPError) and resposta_simulado is not None:
+            erro_texto = f"{resposta_simulado.status_code} {resposta_simulado.text}"
+        return {"salvo": False, "erro": f"Falha ao inserir registro em fs_simulado_resultados: {erro_texto}", "sem_config": False}
 
 
 def render_selecao_simulado():
