@@ -29,6 +29,11 @@ def obter_headers():
     return url, key, headers
 
 
+def obter_usuario_atual():
+    auth_user = st.session_state.get("auth_user", {}) or {}
+    return st.session_state.get("username") or auth_user.get("email") or auth_user.get("id")
+
+
 def normalizar_resultado(item):
     acertou = item.get("acertou")
     if isinstance(acertou, str):
@@ -98,19 +103,27 @@ def carregar_resultados():
 
 def deletar_todos_resultados():
     url, _, headers = obter_headers()
+    usuario_atual = obter_usuario_atual()
 
     if not (url and headers):
         return {"total": 0, "tabelas": {}, "erro": "sem_config"}
+
+    if not usuario_atual:
+        return {"total": 0, "tabelas": {}, "erro": "sem_usuario"}
 
     detalhes = {}
     total = 0
 
     for tabela in [TABELA_QUESTOES, TABELA_SIMULADO]:
         try:
+            filtros = {
+                "select": "id",
+                "or": f"user_email.eq.{usuario_atual},user_id.eq.{usuario_atual}",
+            }
             resposta = requests.get(
                 f"{url}/rest/v1/{tabela}",
                 headers=headers,
-                params={"select": "id"},
+                params=filtros,
                 timeout=15,
             )
             resposta.raise_for_status()
@@ -148,12 +161,14 @@ def render():
 
     with st.expander("Limpar dados de resultados", expanded=False):
         st.warning(
-            "Esta ação remove todos os registros das tabelas fs_questoes_resultados e fs_simulado_resultados."
+            "Esta ação remove apenas os registros deste usuário nas tabelas fs_questoes_resultados e fs_simulado_resultados."
         )
-        if st.button("Excluir todos os registros", type="secondary"):
+        if st.button("Excluir meus registros", type="secondary"):
             resultado_limpeza = deletar_todos_resultados()
             if resultado_limpeza.get("erro") == "sem_config":
                 st.error("Configure o Supabase para limpar os dados automaticamente.")
+            elif resultado_limpeza.get("erro") == "sem_usuario":
+                st.error("Não foi possível identificar o usuário atual para exclusão.")
             else:
                 st.success(
                     f"Registros removidos: {resultado_limpeza.get('total', 0)}."
