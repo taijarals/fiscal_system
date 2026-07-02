@@ -180,7 +180,6 @@ def salvar_resultado_simulado():
         return {"salvo": True, "erro": None, "sem_config": False}
 
     payload = montar_payload_resultado()
-    payload_questoes = montar_payload_questoes_resultado()
     url, key = obter_config_supabase()
 
     if not (url and key):
