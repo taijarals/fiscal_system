@@ -183,17 +183,16 @@ def montar_payload_questoes_resultado():
 
 
 def salvar_resultado_simulado():
-    """Salva o resultado do simulado no Supabase quando possível."""
+    """Tenta salvar o resultado do simulado no Supabase e retorna o status."""
     if st.session_state.get("simulado_resultado_salvo"):
-        return True
+        return {"salvo": True, "erro": None, "sem_config": False}
 
     payload = montar_payload_resultado()
     payload_questoes = montar_payload_questoes_resultado()
     url, key = obter_config_supabase()
 
     if not (url and key):
-        st.session_state.simulado_resultado_salvo = True
-        return False
+        return {"salvo": False, "erro": "Supabase não configurado.", "sem_config": True}
 
     token = st.session_state.get("auth_token")
     headers = {
@@ -221,10 +220,10 @@ def salvar_resultado_simulado():
             timeout=15,
         ).raise_for_status()
         st.session_state.simulado_resultado_salvo = True
-        return True
-    except Exception:
+        return {"salvo": True, "erro": None, "sem_config": False}
+    except Exception as erro:
         st.session_state.simulado_resultado_salvo = False
-        return False
+        return {"salvo": False, "erro": str(erro), "sem_config": False}
 
 
 def render_selecao_simulado():
@@ -434,12 +433,16 @@ def render_resultado_simulado():
     st.subheader("Resultado do Simulado")
 
     if not st.session_state.get("simulado_resultado_salvo"):
-        salvo = salvar_resultado_simulado()
-        if salvo:
+        resultado_salvamento = salvar_resultado_simulado()
+        if resultado_salvamento["salvo"]:
             st.success("Resultado salvo no Supabase para análise futura.")
+        elif resultado_salvamento["sem_config"]:
+            st.warning("Supabase não configurado. O resultado foi calculado localmente e não foi persistido.")
+            st.caption("Configure SUPABASE_URL e SUPABASE_KEY em .streamlit/secrets.toml para salvar resultados no Supabase.")
         else:
-            st.caption("O resultado foi calculado localmente. Se quiser, configure o Supabase para persistir os dados automaticamente.")
-    
+            st.error("Falha ao salvar o resultado no Supabase.")
+            st.caption(f"Erro: {resultado_salvamento['erro']}")
+
     acertos, total, percentual = calcular_resultado()
     
     # Card de resultado
