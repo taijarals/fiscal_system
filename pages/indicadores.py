@@ -116,29 +116,42 @@ def deletar_todos_resultados():
     if not (user_id or user_email):
         return {"total": 0, "tabelas": {}, "erro": "sem_usuario"}
 
-    filtros = {"select": "id"}
+    def buscar_ids(tabela, filtros):
+        resposta = requests.get(
+            f"{url}/rest/v1/{tabela}",
+            headers=headers,
+            params={"select": "id", **filtros},
+            timeout=15,
+        )
+        resposta.raise_for_status()
+        return [item["id"] for item in resposta.json() if item.get("id") is not None]
+
     filtros_or = []
     if user_email:
         filtros_or.append(f"user_email.eq.{user_email}")
     if user_id:
         filtros_or.append(f"user_id.eq.{user_id}")
-    if filtros_or:
-        filtros["or"] = ",".join(filtros_or)
 
     detalhes = {}
     total = 0
 
     for tabela in [TABELA_QUESTOES, TABELA_SIMULADO]:
         try:
-            resposta = requests.get(
-                f"{url}/rest/v1/{tabela}",
-                headers=headers,
-                params=filtros,
-                timeout=15,
-            )
-            resposta.raise_for_status()
-            ids = [item["id"] for item in resposta.json() if item.get("id") is not None]
+            ids = []
+            if filtros_or:
+                filt = {"or": f"({','.join(filtros_or)})"}
+                ids = buscar_ids(tabela, filt)
 
+            if not ids and user_id and user_email:
+                ids = buscar_ids(tabela, {"user_id": f"eq.{user_id}"})
+                if not ids:
+                    ids = buscar_ids(tabela, {"user_email": f"eq.{user_email}"})
+
+            if not ids:
+                detalhes[tabela] = 0
+                continue
+
+            deletados = 0
             for identificador in ids:
                 delete_resposta = requests.delete(
                     f"{url}/rest/v1/{tabela}",
@@ -147,9 +160,10 @@ def deletar_todos_resultados():
                     timeout=15,
                 )
                 delete_resposta.raise_for_status()
+                deletados += 1
 
-            detalhes[tabela] = len(ids)
-            total += len(ids)
+            detalhes[tabela] = deletados
+            total += deletados
         except Exception as erro:
             detalhes[tabela] = f"erro: {erro}"
 
