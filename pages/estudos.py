@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
+from functools import partial
 
 # tentativas de import do componente 'streamlit-tree-select'
 try:
@@ -35,77 +36,44 @@ def criar_estrutura_exemplo():
 
 
 def render_arvore(esquerda, estrutura):
-    # Inicializa estado de expansões
-    if "tree_expanded" not in st.session_state:
-        st.session_state["tree_expanded"] = {}
+    for ciclo_nome, ciclo_dados in estrutura.items():
+        with esquerda.expander(ciclo_nome, expanded=False):
+            for meta_nome, meta_dados in ciclo_dados.items():
+                with esquerda.expander(meta_nome, expanded=False):
+                    for disciplina_nome, disciplina_dados in meta_dados.items():
+                        with esquerda.expander(disciplina_nome, expanded=False):
+                            for topico_nome, topico_dados in disciplina_dados.items():
+                                with esquerda.expander(topico_nome, expanded=False):
+                                    aulas = topico_dados.get("Aulas", [])
+                                    for i, aula in enumerate(aulas, start=1):
+                                        title = aula.get("titulo") if isinstance(aula, dict) else str(aula)
+                                        key = f"{ciclo_nome}-{meta_nome}-{disciplina_nome}-{topico_nome}-aula-{i}"
+                                        if esquerda.button(title, key=key):
+                                            if isinstance(aula, dict) and aula.get("url"):
+                                                st.session_state.estudo_selecionado = {
+                                                    "tipo": "video",
+                                                    "titulo": title,
+                                                    "url": aula.get("url"),
+                                                    "path": f"{ciclo_nome}/{meta_nome}/{disciplina_nome}/{topico_nome}",
+                                                }
+                                            else:
+                                                st.session_state.estudo_selecionado = {
+                                                    "tipo": "aula",
+                                                    "titulo": title,
+                                                    "path": f"{ciclo_nome}/{meta_nome}/{disciplina_nome}/{topico_nome}",
+                                                }
+                                            st.experimental_rerun()
 
-    def is_expanded(path):
-        return st.session_state["tree_expanded"].get(path, False)
-
-    def toggle_expanded(path):
-        st.session_state["tree_expanded"][path] = not st.session_state["tree_expanded"].get(path, False)
-
-    def render_node(name, data, path, level):
-        indent = "\u00A0" * (level * 4)
-
-        # Internal node (dict with children)
-        if isinstance(data, dict) and any(k not in ("Aulas", "PDF", "Questoes", "Tipo") for k in data.keys()):
-            key_btn = f"node-{path}"
-            caret = "▾" if is_expanded(path) else "▸"
-            label = f"{indent}{caret} {name}"
-            if esquerda.button(label, key=key_btn):
-                toggle_expanded(path)
-
-            if is_expanded(path):
-                # render children
-                for child_name, child_data in data.items():
-                    render_node(child_name, child_data, f"{path}/{child_name}", level + 1)
-
-        else:
-            # Node that may contain Aulas/PDF directly
-            key_btn = f"node-{path}"
-            caret = "▾" if is_expanded(path) else "▸" if isinstance(data, dict) else ""
-            label = f"{indent}{caret} {name}"
-            if esquerda.button(label, key=key_btn):
-                # if has aulas
-                aulas = data.get("Aulas") if isinstance(data, dict) else None
-                if aulas:
-                    toggle_expanded(path)
-                else:
-                    # leaf without aulas (unlikely) — select
-                    st.session_state.estudo_selecionado = {"tipo": "node", "titulo": name}
-
-            if isinstance(data, dict) and is_expanded(path):
-                # render Aulas
-                aulas = data.get("Aulas", [])
-                for i, aula in enumerate(aulas, start=1):
-                    title = aula.get("titulo") if isinstance(aula, dict) else str(aula)
-                    key_a = f"{path}-aula-{i}"
-                    label_a = f"{indent}\u00A0\u00A0▶ {title}"
-                    if esquerda.button(label_a, key=key_a):
-                        if isinstance(aula, dict) and aula.get("url"):
-                            st.session_state.estudo_selecionado = {
-                                "tipo": "video",
-                                "titulo": title,
-                                "url": aula.get("url"),
-                                "path": path,
-                            }
-                            st.rerun()
-                        else:
-                            st.session_state.estudo_selecionado = {"tipo": "aula", "titulo": title, "path": path}
-                            st.rerun()
-
-                pdf = data.get("PDF")
-                if pdf:
-                    key_pdf = f"{path}-pdf"
-                    label_pdf = f"{indent}\u00A0\u00A0📄 PDF"
-                    if esquerda.button(label_pdf, key=key_pdf):
-                        st.session_state.estudo_selecionado = {"tipo": "pdf", "url": pdf, "path": path}
-                        st.rerun()
-
-    # Render top-level nodes
-    for top_name, top_data in estrutura.items():
-        render_node(top_name, top_data, top_name, 0)
+                                    pdf = topico_dados.get("PDF")
+                                    if pdf:
+                                        key_pdf = f"{ciclo_nome}-{meta_nome}-{disciplina_nome}-{topico_nome}-pdf"
+                                        if esquerda.button("Abrir PDF", key=key_pdf):
+                                            st.session_state.estudo_selecionado = {
+                                                "tipo": "pdf",
+                                                "url": pdf,
+                                                "path": f"{ciclo_nome}/{meta_nome}/{disciplina_nome}/{topico_nome}",
+                                            }
+                                            st.experimental_rerun()
 
     return st.session_state.get("estudo_selecionado")
 
@@ -118,8 +86,6 @@ def mostrar_pdf_url(url):
 
 
 def render():
-    st.set_page_config(layout="wide")
-
     st.title("Área de Estudos")
 
     estrutura = criar_estrutura_exemplo()
