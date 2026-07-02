@@ -29,9 +29,14 @@ def obter_headers():
     return url, key, headers
 
 
-def obter_usuario_atual():
+def obter_identificadores_usuario():
     auth_user = st.session_state.get("auth_user", {}) or {}
-    return st.session_state.get("username") or auth_user.get("email") or auth_user.get("id")
+    usuario = st.session_state.get("username")
+
+    user_id = auth_user.get("id") or usuario
+    user_email = auth_user.get("email") or (usuario if usuario and "@" in usuario else None)
+
+    return user_id, user_email
 
 
 def normalizar_resultado(item):
@@ -103,23 +108,28 @@ def carregar_resultados():
 
 def deletar_todos_resultados():
     url, _, headers = obter_headers()
-    usuario_atual = obter_usuario_atual()
+    user_id, user_email = obter_identificadores_usuario()
 
     if not (url and headers):
         return {"total": 0, "tabelas": {}, "erro": "sem_config"}
 
-    if not usuario_atual:
+    if not (user_id or user_email):
         return {"total": 0, "tabelas": {}, "erro": "sem_usuario"}
+
+    filtros = {"select": "id"}
+    filtros_or = []
+    if user_email:
+        filtros_or.append(f"user_email.eq.{user_email}")
+    if user_id:
+        filtros_or.append(f"user_id.eq.{user_id}")
+    if filtros_or:
+        filtros["or"] = ",".join(filtros_or)
 
     detalhes = {}
     total = 0
 
     for tabela in [TABELA_QUESTOES, TABELA_SIMULADO]:
         try:
-            filtros = {
-                "select": "id",
-                "or": f"user_email.eq.{usuario_atual},user_id.eq.{usuario_atual}",
-            }
             resposta = requests.get(
                 f"{url}/rest/v1/{tabela}",
                 headers=headers,
@@ -151,12 +161,13 @@ def render():
 
     resultados, origem = carregar_resultados()
 
-    usuario_atual = st.session_state.get("username") or st.session_state.get("auth_user", {}).get("email")
-    if usuario_atual:
+    user_id, user_email = obter_identificadores_usuario()
+    if user_id or user_email:
         resultados = [
             item
             for item in resultados
-            if item.get("user_email") == usuario_atual or item.get("user_id") == usuario_atual
+            if (user_id and item.get("user_id") == user_id)
+            or (user_email and item.get("user_email") == user_email)
         ]
 
     with st.expander("Limpar dados de resultados", expanded=False):
