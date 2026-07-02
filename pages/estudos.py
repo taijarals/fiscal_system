@@ -4,12 +4,12 @@ import streamlit.components.v1 as components
 
 def criar_estrutura_exemplo():
     return {
-        "Ciclos 1": {
+        "Ciclo 1": {
             "Meta 1": {
-                "Direito - Tributário": {
+                "Direito Tributário": {
                     "Aulas": [
                         {
-                            "titulo": "Introdução ao Direito Tributário 01 a 08",
+                            "titulo": "Aula 1: Introdução ao Direito Tributário 01 a 08",
                             "url": "https://videoaulas.infra.grancursosonline.com.br/564afe295161b94c3dcc76ab8ec071b3/d414bb4a431beb9bf948835085c9340b/d414bb4a431beb9bf948835085c9340b-p480.mp4?Expires=1783109998&Signature=TmjkInm6iFIHqHbfIBIM5IlVPWyGlLuDr4dOzDr3rIIXoEDqRUbzKrAmLResO-QajDSdohqYe4TJ9pAukUcBxd~WXS7s1Stbc5-nZPPMcsDqySkI5DqK3~i3w3OT~UWYjNZEMrDxNYR0HqFwloak22cAxWDjX8kJI9RQpHZAwWxSG8kqfDxaUXQxcVDCM66qlWfFhDYzVC~qvzupQDgbLcPy7YmDq93tLxxtey-4Am-PMcym9WlaSFF5EhAdSV6TKvrFiVZDkBzk8V2SjZTb-Q4-1en4hl9lAzkZYQ4n5o6tz-0g-DBHle5ubJwaW9RZNjisdU1ONkvQxRyHl6dAcQ__&Key-Pair-Id=APKAJWDRH5QWMLF2KNSA"
                         }
                     ],
@@ -24,11 +24,11 @@ def criar_estrutura_exemplo():
 
 def render_arvore(esquerda, estrutura):
     for ciclo, metas in estrutura.items():
-        with esquerda.expander(f"Ciclo: {ciclo}", expanded=True):
+        with esquerda.expander(ciclo, expanded=False):
             for meta, disciplinas in metas.items():
-                with esquerda.expander(f"Meta: {meta}", expanded=True):
+                with esquerda.expander(meta, expanded=False):
                     for disciplina, conteudo in disciplinas.items():
-                        with esquerda.expander(f"📚 {disciplina}", expanded=False):
+                        with esquerda.expander(disciplina, expanded=False):
                             aulas = conteudo.get("Aulas", [])
                             for i, aula in enumerate(aulas, start=1):
                                 title = aula["titulo"] if isinstance(aula, dict) else str(aula)
