@@ -165,7 +165,6 @@ def montar_payload_questoes_resultado():
             "tipo_questao": questao.get("tipo_questao"),
             "alternativa_certa": questao.get("alternativa_certa"),
             "resposta": resposta,
-            "acertou": acertou,
             "percentual": 100 if acertou is True else 0 if acertou is False else None,
             "marcada_para_revisao": marcada_para_revisao,
             "tipo_simulado": "simulado",
