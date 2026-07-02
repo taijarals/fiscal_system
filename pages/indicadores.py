@@ -265,7 +265,7 @@ def render():
                 st.markdown(f"### Desempenho por assunto{f' - {assunto_selecionado}' if assunto_selecionado != 'Todos' else ''}")
                 st.bar_chart(
                     desempenho_por_assunto.set_index("assunto")["percentual"],
-                    width='stretch,
+                    width='stretch',
                 )
             else:
                 st.info("Não há dados suficientes para agrupar por assunto.")
