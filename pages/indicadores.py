@@ -220,7 +220,7 @@ def render():
         evolucao = df[["created_at", "percentual"]].dropna()
         if not evolucao.empty:
             st.markdown("### Evolução ao longo do tempo")
-            st.line_chart(evolucao.set_index("created_at")["percentual"], use_container_width=True)
+            st.line_chart(evolucao.set_index("created_at")["percentual"], width='stretch)
     elif view == "Disciplina":
         if "disciplina" in df.columns:
             disciplinas = sorted([valor for valor in df["disciplina"].dropna().astype(str).unique() if valor])
@@ -241,7 +241,7 @@ def render():
                 st.markdown(f"### Desempenho por disciplina{f' - {disciplina_selecionada}' if disciplina_selecionada != 'Todas' else ''}")
                 st.bar_chart(
                     desempenho_por_disciplina.set_index("disciplina")["percentual"],
-                    use_container_width=True,
+                    width='stretch,
                 )
             else:
                 st.info("Não há dados suficientes para agrupar por disciplina.")
@@ -265,7 +265,7 @@ def render():
                 st.markdown(f"### Desempenho por assunto{f' - {assunto_selecionado}' if assunto_selecionado != 'Todos' else ''}")
                 st.bar_chart(
                     desempenho_por_assunto.set_index("assunto")["percentual"],
-                    use_container_width=True,
+                    width='stretch,
                 )
             else:
                 st.info("Não há dados suficientes para agrupar por assunto.")
@@ -286,4 +286,4 @@ def render():
         "marcada_para_revisao",
     ]].copy()
     tabela["created_at"] = tabela["created_at"].dt.strftime("%d/%m/%Y %H:%M")
-    st.dataframe(tabela.sort_values("created_at", ascending=False).head(20), use_container_width=True, hide_index=True)
+    st.dataframe(tabela.sort_values("created_at", ascending=False).head(20), width='stretch, hide_index=True)
