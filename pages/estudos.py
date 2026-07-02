@@ -24,11 +24,11 @@ def criar_estrutura_exemplo():
 
 def render_arvore(esquerda, estrutura):
     for ciclo, metas in estrutura.items():
-        with esquerda.expander(ciclo, expanded=True):
+        with esquerda.expander(f"Ciclo: {ciclo}", expanded=True):
             for meta, disciplinas in metas.items():
-                with esquerda.expander(meta, expanded=True):
+                with esquerda.expander(f"Meta: {meta}", expanded=True):
                     for disciplina, conteudo in disciplinas.items():
-                        with esquerda.expander(disciplina, expanded=False):
+                        with esquerda.expander(f"📚 {disciplina}", expanded=False):
                             aulas = conteudo.get("Aulas", [])
                             for i, aula in enumerate(aulas, start=1):
                                 title = aula["titulo"] if isinstance(aula, dict) else str(aula)
@@ -51,7 +51,7 @@ def render_arvore(esquerda, estrutura):
                                             "ciclo": ciclo,
                                             "meta": meta,
                                         }
-                                    st.experimental_rerun()
+                                    st.rerun()
 
                             pdf = conteudo.get("PDF")
                             if pdf:
@@ -64,7 +64,7 @@ def render_arvore(esquerda, estrutura):
                                         "ciclo": ciclo,
                                         "meta": meta,
                                     }
-                                    st.experimental_rerun()
+                                    st.rerun()
 
     return st.session_state.get("estudo_selecionado")
 
